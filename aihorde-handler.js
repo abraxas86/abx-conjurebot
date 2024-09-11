@@ -83,7 +83,6 @@ async function getImage(generationID) {
         console.log(`${colours.green}--------------------------${colours.reset}`);
 
         if (response.generations && response.generations.length > 0) {
-            const imageUrl = response.generations[0].img; // Access the first generation's image
             return response;
         } else {
             console.log("[ABX-Conjurebot: aihorde-handler] No image found in generations.");
