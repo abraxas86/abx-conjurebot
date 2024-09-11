@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Spin</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .card {
+            width: 300px;
+            height: 400px;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 1s, transform 1s;
+            position: relative;
+        }
+        .card.hidden {
+            opacity: 0;
+        }
+        .card.spin {
+            transform: rotateY(360deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="card" id="card"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on('newImage', (imageUrl) => {
+            const card = document.getElementById('card');
+            card.style.backgroundImage = `url(${imageUrl})`;
+            card.classList.remove('hidden');
+            card.classList.add('spin');
+            setTimeout(() => {
+                card.classList.remove('spin');
+                setTimeout(() => {
+                    card.classList.add('hidden');
+                }, 1000); // Wait for fade-out animation
+            }, 3000); // Wait for spin animation
+        });
+    </script>
+</body>
+</html>
