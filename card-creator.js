@@ -86,12 +86,14 @@ async function createYugi(generationID) {
 
         // Copy the final card image to the output path
         fs.copyFileSync(myCard, fileOut);
+        
+        setJobCompleted(generationID);
+
         console.log('[ABX-Conjurebot: conjure-handler] Card created and saved to:', fileOut);
     } catch (error) {
         console.error('[ABX-Conjurebot: conjure-handler] Error processing images:', error);
     }
 }
-
 
 // Wrap text to properly fit in card boundaries
 function wrapText(text, maxWidth) {
@@ -114,6 +116,10 @@ function wrapText(text, maxWidth) {
     if (currentLine) lines.push(currentLine.trim());
 
     return lines;
+}
+
+async function setJobCompleted(generationID){
+    await executeUpdate('UPDATE Jobs SET status = ? WHERE generationId = ?',[3, generationID]);
 }
 
 async function findImagePath(searchString) {
@@ -141,7 +147,7 @@ async function findImagePath(searchString) {
 
         return null; // Return null if no file is found
     }
-
+    
     return searchDirectory(imageDir);
 }
 
