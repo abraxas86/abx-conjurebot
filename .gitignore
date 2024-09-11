@@ -1,13 +1,16 @@
-#Config files
+# Config files
 botconfig.json
 .env
 
-#Dev notes
+# Dev notes
 notes.txt
 
 # images
 public/images/*
 !public/images/template.png
+
+# Database
+conjure.db
 
 # Logs
 logs
