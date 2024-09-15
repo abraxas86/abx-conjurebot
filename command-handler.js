@@ -93,9 +93,53 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
         client.say(channel, matchedCommand.botResponse ?? "Let's see what I can conjure up...");
         const prompt = message.slice(matchedCommand.command.length).trim();
 
-        addToQueue(username, prompt, matchedCommand.modifier);
+        await addToQueue(username, prompt, matchedCommand.modifier);
 
         console.log(`[ABX-Conjurebot: command-handler] ${username} used ${matchedCommand.command}: ${prompt}`);
+
+        // Start handling the conjure job
+        await handleConjureJob(client, channel, username, prompt);
+    }
+}
+
+async function handleConjureJob(client, channel, username, prompt) {
+    try {
+        // Retrieve a job
+        const [job] = await getJob();
+        if (!job) {
+            client.say(channel, "If you see this, it means @abraxas86 screwed up the code and I couldn't find your job...");
+            return;
+        }
+
+        // Send the reques
+        const genID = await sendRequest(job);
+
+        // Wait for 2 seconds before checking the job status
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        let status = await checkJob(genID);
+
+        // Loop until the job is done
+        while (!status.done) {
+            console.log(`Job ${genID} not done yet. Checking again in 5 seconds...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            status = await checkJob(genID);
+        }
+
+        // Get the image and process it
+        const packet = await getImage(genID);
+        const imgUrl = packet.generations[0].img;
+
+        // Notify the user
+        client.say(channel, `${username}: here is your image for: ${prompt}!`)
+        client.say(channel, `Click at your own risk: ${imgUrl}`);
+
+        // Save the image and create the Yugi
+        await saveImage(imgUrl, genID);
+        await createYugi(genID);
+
+    } catch (error) {
+        console.error(`An error occurred while processing the job:`, error);
     }
 }
 

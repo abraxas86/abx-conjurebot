@@ -64,16 +64,28 @@ async function sendRequest(job) {
 
 async function checkJob(generationID) {
     try {
+        // Call the API to check the job status
         const response = await ai_horde.getImageGenerationCheck(generationID);
+
+        // Check if the response is valid and log it
+        if (!response || typeof response !== 'object') {
+            throw new Error('Invalid response received from checkJob');
+        }
+
         console.log(`[ABX-Conjurebot: aihorde-handler]`);
         console.log(`${colours.magenta}---- CHECKJOB RESULTS ----${colours.reset}`);
         console.log(response);
         console.log(`${colours.magenta}--------------------------${colours.reset}\n`);
+
+        // Return the parsed response
         return response;
     } catch (err) {
         console.error("[ABX-Conjurebot: aihorde-handler] Error checking job status:", err);
+        // Optionally, you might want to rethrow the error or handle it differently
+        throw err; // Rethrow to let the caller handle it if needed
     }
 }
+
 
 async function getImage(generationID) {
     try {
