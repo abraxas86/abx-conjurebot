@@ -1,92 +1,105 @@
-/*
-const { executeSelect, executeUpdate } = require('./database-handler');
-const { getJob, sendRequest, checkJob, getImage } = require('./aihorde-handler');
-const fs = require('fs');
-const path = require('path');
-const fetch = require('node-fetch'); // Use CommonJS-compatible import
+const { getJob, getImage, sendRequest, checkJob, saveImage } = require('./aihorde-handler.js');
+const { executeSelect } = require('./database-handler');
+const { createYugi } = require('./card-creator.js');
 
-const imageDir = path.join(__dirname, 'public', 'images');
-const checkInterval = 5000; // 5 seconds
+// Configurable timers (in milliseconds)
+const POLL_INTERVAL = 3000; // Poll for new jobs every 3 seconds
+const INITIAL_CHECK_DELAY = 6000; // Start checking job status after 6 seconds
+const STATUS_CHECK_INTERVAL = 20000; // Check job status every 20 seconds if not done
 
+const jobQueue = [];  // Array to track jobs in progress
 
-async function processJobs() {
+async function handleJob(client, channel) {
     try {
-        const jobs = await getJob(); // Get jobs from the database
-
-        if (!jobs || jobs.length === 0) {
-            console.log("No jobs available.");
+        // Get the next unprocessed job in the database.
+        const [job] = await getJob();
+        if (!job) {
+            //console.log("No new jobs found.");
             return;
         }
 
-        // Assuming the jobs array contains at least one job object
-        const job = jobs[0];
+        console.log(`Got request from ${job.requestor} for ${job.prompt}`);
 
-        if (job.status === 0) {
-            // Job is in the queue, submit it to the AI Horde
-            const generationId = await sendRequest(job);
+        // Send the job to the AI and get its generationID:
+        const genID = await sendRequest(job);
+        console.log(`Generation ID: ${genID}`);
 
-            // Poll for job completion
-            let jobCompleted = false;
-            while (!jobCompleted) {
-                const statusResponse = await checkJob(generationId);
-                jobCompleted = statusResponse.done === true;
+        // Add job to queue for checking status
+        jobQueue.push({ genID, startTime: Date.now(), status: 'pending' });
+        console.log(`Job added to queue: ${JSON.stringify(jobQueue)}`);
 
-                if (!jobCompleted) {
-                    await new Promise(resolve => setTimeout(resolve, checkInterval));
-                }
-            }
-
-            // Once complete, fetch the image URL
-            const imageUrl = await getImage(generationId);
-
-            // Download and process the image
-            const imageFetchResponse = await fetch(imageUrl);
-            const buffer = await imageFetchResponse.buffer();
-            const imagePath = path.join(imageDir, `${generationId}.png`);
-
-            fs.writeFileSync(imagePath, buffer);
-
-            // Process the image using ImageMagick
-d
-
-            // Update job status to 1 (submitted)
-            await executeUpdate(`UPDATE Jobs SET status = 1, generationId = ? WHERE rowid = ?`, [generationId, job.rowid]);
-
-        } else if (job.status === 1) {
-            // Job has been submitted but image is not fetched yet
-            const imageUrl = await getImage(job.generationId);
-
-            // Download and process the image
-            const imageFetchResponse = await fetch(imageUrl);
-            const buffer = await imageFetchResponse.buffer();
-            const imagePath = path.join(imageDir, `${job.generationId}.png`);
-
-            fs.writeFileSync(imagePath, buffer);
-
-            // Process with ImageMagick
-            const processedImagePath = path.join(imageDir, `processed_${job.generationId}.png`);
-            ImageMagick.convert([imagePath, '-resize', '300x400', processedImagePath], (err) => {
-                if (err) {
-                    console.error('Error processing image with ImageMagick:', err);
-                } else {
-                    console.log(`Image processed: ${processedImagePath}`);
-                    io.emit('jobComplete', job.generationId, `/images/processed_${job.generationId}.png`);
-                }
-            });
-
-            // Update job status to 2 (image fetched and processed)
-            await executeUpdate(`UPDATE Jobs SET status = 2 WHERE rowid = ?`, [job.rowid]);
-
-        } else if (job.status === 2) {
-            console.log("Job already processed and image fetched.");
-        } else {
-            console.log("Unknown job status.");
-        }
+        // Start polling for job completion after the initial delay
+        setTimeout(() => checkJobStatus(client, channel, genID), INITIAL_CHECK_DELAY);
 
     } catch (error) {
-        console.error('Error processing job:', error);
+        console.error('Error in handleJob:', error);
     }
 }
 
-setInterval(processJobs, checkInterval);
-*/
+
+async function checkJobStatus(client, channel, genID) {
+    try {
+        // Check the status of the job
+        const status = await checkJob(genID);
+        console.log(`Job Status for ${genID}: ${JSON.stringify(status)}`);
+
+        if (status.done) {
+            console.log("Job complete! Fetching image...");
+
+            // Finish things up if the job is done
+            const packet = await getImage(genID);
+            const imgUrl = packet.generations[0].img;
+            console.log(`Image URL: ${imgUrl}`);
+
+            // Retrieve the requestor and prompt from the database
+            const [result] = await executeSelect('SELECT requestor, prompt FROM Jobs WHERE generationId = ?', [genID]);
+            if (!result) {
+                console.error(`Requestor and prompt for genID ${genID} not found.`);
+                return;
+            }
+            const { requestor, prompt } = result;
+
+            // Truncate the prompt to the first 500 characters if needed
+            const truncatedPrompt = prompt.length > 500 ? `${prompt.substring(0, 500)}` : prompt;
+
+            // Prepare the response message
+            const response = `@${requestor}: Here is the image for ${truncatedPrompt}`;
+
+            // Send response message and image URL to chat
+            client.say(channel, response);
+            client.say(channel, imgUrl);
+
+            // Save the webp generation
+            saveImage(genID);
+
+            // Optional: Create Yugioh card
+            createYugi(genID);
+
+            // Remove job from queue
+            const index = jobQueue.findIndex(job => job.genID === genID);
+            if (index !== -1) {
+                jobQueue.splice(index, 1);  // Remove the job from the queue
+                console.log(`Job with genID ${genID} removed from queue.`);
+            }
+
+        } else {
+            console.log("Job still in progress, checking again in 15 seconds...");
+
+            // Job not done yet, check again in STATUS_CHECK_INTERVAL milliseconds
+            setTimeout(() => checkJobStatus(client, channel, genID), STATUS_CHECK_INTERVAL);
+        }
+    } catch (error) {
+        console.error('Error in checkJobStatus:', error);
+    }
+}
+
+
+
+
+// Export the functions and configurable timers to be used in the main server script
+module.exports = {
+    handleJob,
+    POLL_INTERVAL,
+    INITIAL_CHECK_DELAY,
+    STATUS_CHECK_INTERVAL
+};

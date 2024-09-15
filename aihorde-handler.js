@@ -31,10 +31,10 @@ const ai_horde = new AIHorde({
 async function getJob() {
         const job = await executeSelect("SELECT *, _rowid_ AS rowid FROM jobs WHERE status = 0 ORDER BY timestamp ASC LIMIT 1");
 
-        console.log(`[ABX-Conjurebot: aihorde-handler] Job fetched!`);
-        console.log(`${colours.blue}------ JOB DETAILS ------${colours.reset}`);
-        console.log(job);
-        console.log(`${colours.blue}-------------------------${colours.reset}`);
+        //console.log(`[ABX-Conjurebot: aihorde-handler] Job fetched!`);
+        //console.log(`${colours.blue}------ JOB DETAILS ------${colours.reset}`);
+        //console.log(job);
+        //console.log(`${colours.blue}-------------------------${colours.reset}\n`);
         return job;
 }
 
@@ -68,7 +68,7 @@ async function checkJob(generationID) {
         console.log(`[ABX-Conjurebot: aihorde-handler]`);
         console.log(`${colours.magenta}---- CHECKJOB RESULTS ----${colours.reset}`);
         console.log(response);
-        console.log(`${colours.magenta}--------------------------${colours.reset}`);
+        console.log(`${colours.magenta}--------------------------${colours.reset}\n`);
         return response;
     } catch (err) {
         console.error("[ABX-Conjurebot: aihorde-handler] Error checking job status:", err);
@@ -80,7 +80,7 @@ async function getImage(generationID) {
         const response = await ai_horde.getImageGenerationStatus(generationID);
         console.log(`${colours.green}---- GETIMAGE RESULTS ----${colours.reset}`);
         console.log(response);
-        console.log(`${colours.green}--------------------------${colours.reset}`);
+        console.log(`${colours.green}--------------------------${colours.reset}\n`);
 
         if (response.generations && response.generations.length > 0) {
             return response;
@@ -124,7 +124,6 @@ function formatDateToIso(epochtime){
 
     // Format as yyyy-mm-dd_hh.mm.ss
     return `${year}-${month}-${day}_${hours}.${minutes}.${seconds}`;
-
 }
 
 

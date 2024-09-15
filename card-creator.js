@@ -2,15 +2,17 @@ const { executeSelect, executeUpdate } = require('./database-handler');
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
+const { io } = require('./server-handler');
 
 const imageDir = path.join(__dirname, 'public', 'images');
+
 
 async function createYugi(generationID) {
     // Get path of saved webp: filename will contain the generationID
     const imagePath = await findImagePath(generationID);
 
     if (!imagePath) {
-        console.log('[ABX-Conjurebot: conjure-handler] No path returned');
+        console.log('[ABX-Conjurebot: Card-creator] No path returned');
         return;
     }
 
@@ -21,9 +23,7 @@ async function createYugi(generationID) {
     // Image variables
     const template = path.join(imageDir, 'template.png');
     const myCard = path.join(imageDir, 'myCard.png');
-    const fileOut = imagePath.slice(0, -5) + '_yugi.png';
-
-    console.log(`Debug imagePath: ${imagePath}`);
+    const fileOut = imagePath.slice(0, -5) + '_yugi.png'
 
     try {
         // Step 1: Resize the generated image
@@ -33,8 +33,6 @@ async function createYugi(generationID) {
 
         // Step 2: Add card name, type, and flavor text
         const { width: templateWidth, height: templateHeight } = await sharp(template).metadata();
-
-        console.log(`debug template height: ${templateHeight} | width: ${templateWidth}`);
 
         // Calculate text positioning for the bottom-right
         const lineHeight = 20; // Adjust this value as needed
@@ -90,42 +88,24 @@ async function createYugi(generationID) {
         setJobCompleted(generationID);
 
         console.log('[ABX-Conjurebot: conjure-handler] Card created and saved to:', fileOut);
+
+        emitCard(fileOut.split('/').pop());
+
     } catch (error) {
         console.error('[ABX-Conjurebot: conjure-handler] Error processing images:', error);
     }
-}
-
-// Wrap text to properly fit in card boundaries
-function wrapText(text, maxWidth) {
-    const words = text.split(' ');
-    const lines = [];
-    let currentLine = '';
-
-    // Loop through each word and wrap text
-    for (const word of words) {
-        // If adding this word exceeds maxWidth, push the current line and start a new line
-        if ((currentLine + ' ' + word).length > maxWidth) {
-            lines.push(currentLine.trim()); // Trim to remove any extra spaces
-            currentLine = word; // Start a new line with the current word
-        } else {
-            currentLine += (currentLine ? ' ' : '') + word; // Add the word to the current line
-        }
-    }
-
-    // Add the last line if there's any remaining text
-    if (currentLine) lines.push(currentLine.trim());
-
-    return lines;
 }
 
 async function setJobCompleted(generationID){
     await executeUpdate('UPDATE Jobs SET status = ? WHERE generationId = ?',[3, generationID]);
 }
 
-async function findImagePath(searchString) {
-    //console.log(`imageDir: ${imageDir}`);
-    //console.log(`searchString: ${searchString}`);
+async function emitCard(cardPath) {
+    io.emit('cardCompleted', cardPath);
+    console.log('[ABX-Conjurebot: card-creator] card emitted!', cardPath);
+}
 
+async function findImagePath(searchString) {
     async function searchDirectory(currentDir) {
         const files = await fs.promises.readdir(currentDir, { withFileTypes: true });
         
@@ -149,6 +129,29 @@ async function findImagePath(searchString) {
     }
     
     return searchDirectory(imageDir);
+}
+
+// Wrap text to properly fit in card boundaries
+function wrapText(text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = '';
+
+    // Loop through each word and wrap text
+    for (const word of words) {
+        // If adding this word exceeds maxWidth, push the current line and start a new line
+        if ((currentLine + ' ' + word).length > maxWidth) {
+            lines.push(currentLine.trim()); // Trim to remove any extra spaces
+            currentLine = word; // Start a new line with the current word
+        } else {
+            currentLine += (currentLine ? ' ' : '') + word; // Add the word to the current line
+        }
+    }
+
+    // Add the last line if there's any remaining text
+    if (currentLine) lines.push(currentLine.trim());
+
+    return lines;
 }
 
 module.exports = { createYugi };

@@ -14,39 +14,98 @@
             align-items: center;
             height: 100vh;
         }
-        .card {
-            width: 300px;
-            height: 400px;
+
+        .card-container {
+            width: 425px;
+            height: 620px;
+            perspective: 800px;
+            position: relative;
+            opacity: 0;
+            transition: opacity 3s ease-in-out; /* Adjusted to 3 seconds for fade out */
+        }
+
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transform: rotateY(0deg);
+            transition: transform 6s ease-in-out;
+        }
+
+        .card-front,
+        .card-back {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
             background-size: cover;
             background-position: center;
-            transition: opacity 1s, transform 1s;
-            position: relative;
+            background-repeat: no-repeat;
         }
-        .card.hidden {
-            opacity: 0;
+
+        .card-front {
+            /* Background image for the front side will be set dynamically */
         }
-        .card.spin {
-            transform: rotateY(360deg);
+
+        .card-back {
+            background-image: url('cardBack.png');
+            transform: rotateY(180deg);
         }
     </style>
 </head>
 <body>
-    <div class="card" id="card"></div>
+    <div class="card-container" id="cardContainer">
+        <div class="card-inner">
+            <div class="card-front" id="cardFront"></div>
+            <div class="card-back"></div>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let isSpinning = false;
 
-        socket.on('newImage', (imageUrl) => {
-            const card = document.getElementById('card');
-            card.style.backgroundImage = `url(${imageUrl})`;
-            card.classList.remove('hidden');
-            card.classList.add('spin');
-            setTimeout(() => {
-                card.classList.remove('spin');
+        socket.on('connect', () => {
+            console.log('Connected with ID: ', socket.id);
+        });
+
+        socket.on('cardCompleted', (imageUrl) => {
+            console.log(`Card received! ${imageUrl}`);
+            const imgDir = '/images'; // Ensure this path is correct
+            const cardFace = `${imgDir}/${imageUrl}?cache=${Date.now()}`;
+            console.log(cardFace);
+
+            const cardFront = document.getElementById('cardFront');
+            const cardContainer = document.getElementById('cardContainer');
+            const cardInner = document.querySelector('.card-inner');
+            
+            cardFront.style.backgroundImage = `url(${cardFace})`;
+
+            // Start the fade-in and spinning
+            if (!isSpinning) {
+                isSpinning = true;
+                cardContainer.style.opacity = '1'; // Fade in to 100% opacity over 2 seconds
+                cardInner.style.transition = 'transform 6s ease-in-out'; // Ensure spin duration
+                cardInner.style.transform = 'rotateY(1080deg)'; // Spin 3 full times
+
+                // Wait for spinning to complete
                 setTimeout(() => {
-                    card.classList.add('hidden');
-                }, 1000); // Wait for fade-out animation
-            }, 3000); // Wait for spin animation
+                    cardInner.style.transition = 'none'; // Disable transition to immediately stop spin
+                    cardInner.style.transform = 'rotateY(0deg)'; // Ensure card stops facing front
+                    setTimeout(() => {
+                        // Show the front of the card for 5 seconds
+                        setTimeout(() => {
+                            cardContainer.style.opacity = '0'; // Fade out over 3 seconds
+                            setTimeout(() => {
+                                isSpinning = false;
+                            }, 3000); // Time to complete the fade out
+                        }, 5000); // Time to display the card front
+                    }, 100); // Small delay to ensure the rotation stops properly
+                }, 6000); // Total duration of spinning
+            }
         });
     </script>
 </body>

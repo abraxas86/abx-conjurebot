@@ -43,8 +43,8 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
                 client.say(channel, "No pending jobs to initialize.");
                 return;
             }
-            
-            client.say(channel,`Got request from ${job.requestor} for ${job.prompt}`);
+
+            client.say(channel,`Sending request from ${job.requestor} for ${job.prompt} to the AI...`);
 
             const genID = await sendRequest(job);
             client.say(channel,`genID: ${genID}`);

@@ -1,10 +1,11 @@
 const { executeSelect, executeUpdate } = require('./database-handler');
 const { createYugi } = require('./card-creator.js');
+
 const fs = require('fs');
 const path = require('path');
 
 let NSFW = false;
-const imageDir = path.join(__dirname, 'public', 'images');
+
 
 function allowNSFW(state){
     if (state.toLowerCase() == "no" ||  state.toLowerCase() == "false" || state.toLowerCase() == "off" || state == "0") NSFW = false;
@@ -55,40 +56,5 @@ async function getCardType() {
         const [type] = await executeSelect("SELECT type FROM Type ORDER BY RANDOM() LIMIT 1");
         return type.type;
 }
-
-
-
-
-
-async function findImagePath(searchString) {
-    //console.log(`imageDir: ${imageDir}`);
-    //console.log(`searchString: ${searchString}`);
-
-    async function searchDirectory(currentDir) {
-        const files = await fs.promises.readdir(currentDir, { withFileTypes: true });
-        
-        // console.log(`Files in directory: ${currentDir}`);
-        console.dir(files, { depth: null }); // Detailed logging of files
-
-        for (const file of files) {
-            const fullPath = path.join(currentDir, file.name);
-            //console.log(`fullPath: ${fullPath}`);
-            
-            if (file.isDirectory()) {
-                // Recursively search subdirectories
-                const result = await searchDirectory(fullPath);
-                if (result) return result; // Return if the file is found
-            } else if (file.name.includes(searchString)) {
-                // Check if the file name contains the searchString
-                return fullPath; // Return the found file path
-            }
-        }
-
-        return null; // Return null if no file is found
-    }
-
-    return searchDirectory(imageDir);
-}
-
 
 module.exports = { addToQueue, allowNSFW };
