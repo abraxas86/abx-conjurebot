@@ -5,21 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Card Spin</title>
     <style>
-        body {
+        html, body {
+            height: 100%;
             margin: 0;
             padding: 0;
             background-color: transparent;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        }
+
+        body {
+            /* Remove flexbox styles for default positioning */
+            display: block; /* Default display */
         }
 
         .card-container {
             width: 425px;
             height: 620px;
             perspective: 800px;
-            position: relative;
+            position: absolute; /* Absolute positioning to allow custom placement */
+            top: 0; /* Align to top */
+            left: 0; /* Align to left */
             opacity: 0;
             transition: opacity 3s ease-in-out; /* Adjusted to 3 seconds for fade out */
         }
@@ -29,7 +33,7 @@
             height: 100%;
             transform-style: preserve-3d;
             transform: rotateY(0deg);
-            transition: transform 6s ease-in-out;
+            transition: transform 6s ease-in-out; /* Ensure spin duration */
         }
 
         .card-front,
