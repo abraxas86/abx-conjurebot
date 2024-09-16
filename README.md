@@ -5,7 +5,7 @@ This script combines AI_Horde and NodeJS to allow users in Twitch to create fake
 Edit the .env_template file to suit your needs.  Save as `.env`
 
 ## How to start the bot:
-`node conjure-server.js`
+`./start.sh`
 
 ## Setting up in OBS:
 Create a browser source that points to the address and port that you configured in your `.env` file
