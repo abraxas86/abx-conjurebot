@@ -11,8 +11,13 @@ Edit the .env_template file to suit your needs.  Save as `.env`
 Create a browser source that points to the address and port that you configured in your `.env` file
 
 ## How to use in chat:
-Twitch chat fires off any of the given commands and a prompt.  The script will handle the rest.
+Twitch chat users fire off any of the given commands you have created, and a prompt.  The script will handle the rest.
 
-Negative prompts can be added by entering `###` followed by whatever negative prompts you want (ie: !conjure a person ###extra fingers, missign fingers, disfigured hand)
+Negative prompts can be added by entering `###` followed by whatever negative prompts you want (ie: !conjure a person ###extra fingers, missign fingers, disfigured hand).  Note that the script already contains some negative prompts by default, and will try to strip out any duplicates or conflict terms that match words in the prompt. (This is far from perfect, though).
 
-The broadcaster has the ability to manually process a job via `!initjob`, `!checkjob [generationID]`, `!getimage [generationID]`
+The broadcaster has the ability to manually process a job via:
+
+1. `!initjob`: Grabs the oldest unprocessed job and sends to AI.  The GenerationID will be returned in the chat.   
+2. `!checkjob [generationID]`: Will check the status of the job.  If completed, it will automatically fire the getImage process.  
+3. `!getimage [generationID]`: Will save the image locally and post the link to the image in chat.  
+4. `!yugi [generationID]`: Will run the script to create and save the Yugioh card, and fire off the socket emit to trigger the website animation
