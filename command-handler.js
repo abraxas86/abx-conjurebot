@@ -61,7 +61,6 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
                 const packet = await getImage(genID);
                 const imgUrl = packet.generations[0].img
                 client.say(channel, `Click at your own risk: ${imgUrl}`);
-                console.log(packet);
                 saveImage(imgUrl, genID);
             } else {
                 client.say(channel, 'Still in the queue...');
