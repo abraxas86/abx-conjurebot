@@ -9,7 +9,7 @@ let adminCommands = [];
 
 // Load commands from the database
 async function setCommands() {
-    commands = await executeSelect('SELECT command, modifier, botResponse FROM commands ORDER BY command ASC');
+    commands = await executeSelect('SELECT command, modifier, negativePrompts, botResponse FROM commands ORDER BY command ASC');
     adminCommands = ['!getImage','!saveImage', '!nsfw', '!refresh-conjure']
     console.log('[ABX-Conjurebot: command-handler] Commands loaded: ', commands);
 }
@@ -93,7 +93,7 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
         client.say(channel, matchedCommand.botResponse ?? "Let's see what I can conjure up...");
         const prompt = message.slice(matchedCommand.command.length).trim();
 
-        await addToQueue(username, prompt, matchedCommand.modifier);
+        await addToQueue(username, prompt, matchedCommand.modifier, matchedCommand.negativePrompts);
 
         console.log(`[ABX-Conjurebot: command-handler] ${username} used ${matchedCommand.command}: ${prompt}`);
 
