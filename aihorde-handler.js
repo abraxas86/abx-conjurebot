@@ -6,6 +6,7 @@ const fetch = require('node-fetch'); // Use CommonJS-compatible import
 
 
 const stableHordeApiKey = process.env.CONJURE_STABLEHORDE_API_KEY;
+const client_agent = process.env.CONJURE_CLIENT_AGENT
 
 const colours = {
     reset: "\x1b[0m",
@@ -24,8 +25,20 @@ const ai_horde = new AIHorde({
     cache: {
         generations_check: 1000 * 30,
     },
-    client_agent: "abx-conjureBot:v0.0.1:abraxas86OnTwitch"
+    client_agent: client_agent
 });
+
+async function getModels(){
+    try {
+        // Call getModels to retrieve available models
+        const models = await ai_horde.getModels();
+        models.sort((a, b) => b.performance - a.performance);
+        console.log('Available models:', models);
+      } catch (error) {
+        console.error('Error fetching models:', error);
+      }
+
+}
 
 
 async function getJob() {
@@ -42,15 +55,25 @@ async function sendRequest(job) {
     const allow_downgrade = true;
     const prompt = `${job.prompt}${job.modifier}`;
 
+    console.log(`job.command: ${job.command}`);
+
+    const [ model ] = await executeSelect('SELECT model FROM commands WHERE command = ?', [job.command]);
+
+    console.log(`${colours.magenta} ===== JOB DETAILS =====\n ${colours.cyan}${JSON.stringify(job)}\nmodel: ${model.model}\n${colours.magenta}=======================`)
+
+
     try {
         // Convert the '0'/'1' value from the database to a boolean
         const nsfwBoolean = job.nsfw === '1';  // '1' => true, '0' => false
+
+        console.log('Request Payload:', generationData);
 
         const response = await ai_horde.postAsyncImageGenerate({
             prompt: prompt,
             nsfw: nsfwBoolean,  // Pass as boolean
             allow_downgrade: allow_downgrade,
             replacement_filter: true,
+            model: model.model,
             token: stableHordeApiKey
         });
 
@@ -142,4 +165,4 @@ function formatDateToIso(epochtime){
 
 
 
-module.exports = { getJob, sendRequest, checkJob, getImage, saveImage };
+module.exports = { getJob, sendRequest, checkJob, getImage, saveImage, getModels };
