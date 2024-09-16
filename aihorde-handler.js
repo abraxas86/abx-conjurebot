@@ -28,17 +28,34 @@ const ai_horde = new AIHorde({
     client_agent: client_agent
 });
 
-async function getModels(){
+async function getModels(model = null) {
     try {
-        // Call getModels to retrieve available models
+        // Call to get models from ai_horde
         const models = await ai_horde.getModels();
+        // Sort models by performance (descending)
         models.sort((a, b) => b.performance - a.performance);
-        console.log('Available models:', models);
-      } catch (error) {
+        
+        // If a specific model is passed, filter and return that model's stats
+        if (model) {
+            // Make the model name lowercase for case-insensitive comparison
+            const lowerCaseModel = model.toLowerCase();
+            const modelStats = models.find(item => item.name.toLowerCase() === lowerCaseModel);
+            
+            if (modelStats) {
+                return modelStats;
+            } else {
+                return `Model "${model}" not found.`;
+            }
+        }
+        
+        // If no model is passed, return all models
+        return models;
+    } catch (error) {
         console.error('Error fetching models:', error);
-      }
-
+        return 'Error fetching models';
+    }
 }
+
 
 
 async function getJob() {

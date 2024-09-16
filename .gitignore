@@ -9,6 +9,9 @@ notes.txt
 public/images/*
 !public/images/template.png
 
+# Fonts
+public/fonts/*
+
 # Database
 conjure.db
 

@@ -85,6 +85,20 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             createYugi(genID);
         }
 
+        if (message.toLowerCase().startsWith('!checkmodel')){
+            const model = message.slice(12).trim().toLowerCase();
+
+            const stats = await getModels();  // Ensure getModels is awaited and invoked
+            console.log(stats);  // Log to see if stats is an array
+            
+            if (Array.isArray(stats)) {
+                const modelStats = stats.find(item => item.name.toLowerCase() === model);
+                console.log(modelStats);
+            } else {
+                console.log('stats is not an array:', stats);
+            }
+        }
+
         if (message.toLowerCase().startsWith('!debug')){
             const blurb = message.slice(6).trim()
 
