@@ -1,6 +1,6 @@
 const { executeSelect } = require('./database-handler');
 const { addToQueue, allowNSFW } = require('./conjure-handler.js');
-const { getJob, getImage, sendRequest, checkJob, saveImage } = require('./aihorde-handler.js');
+const { getJob, getImage, sendRequest, checkJob, saveImage, getModels } = require('./aihorde-handler.js');
 
 const { createYugi } = require('./card-creator.js');
 
@@ -9,7 +9,7 @@ let adminCommands = [];
 
 // Load commands from the database
 async function setCommands() {
-    commands = await executeSelect('SELECT command, modifier, negativePrompts, botResponse FROM commands ORDER BY command ASC');
+    commands = await executeSelect('SELECT command, modifier, negativePrompts, model, botResponse FROM commands ORDER BY command ASC');
     adminCommands = ['!getImage','!saveImage', '!nsfw', '!refresh-conjure']
     console.log('[ABX-Conjurebot: command-handler] Commands loaded: ', commands);
 }
@@ -20,7 +20,7 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
     //const matchedAdminCommand = adminCommands.find(cmd => message.trim().toLowerCase().startsWith(cmd.adminCommand.toLowerCase()))
 
     // Broadcaster-only commands
-    if (userAuthLevel >= 4){ //} && matchedAdminCommand) {
+    if (userAuthLevel >= 4){
         // update conjure commands
         if (message === '!refresh-conjure' || message === '!conjure-refresh'){
             await setCommands();
@@ -80,10 +80,16 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             saveImage(imgUrl, ID);
         }
 
+        if (message.toLowerCase().startsWith('!yugi')){
+            const genID = message.slice(6).trim()
+
+            createYugi(genID);
+        }
+
         if (message.toLowerCase().startsWith('!debug')){
             const blurb = message.slice(6).trim()
 
-            createYugi(blurb);
+            await getModels();
         }
 
 
@@ -93,7 +99,7 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
         client.say(channel, matchedCommand.botResponse ?? "Let's see what I can conjure up...");
         const prompt = message.slice(matchedCommand.command.length).trim();
 
-        await addToQueue(username, prompt, matchedCommand.modifier, matchedCommand.negativePrompts);
+        await addToQueue(username, matchedCommand.command, prompt, matchedCommand.modifier, matchedCommand.negativePrompts, matchedCommand.model);
 
         console.log(`[ABX-Conjurebot: command-handler] ${username} used ${matchedCommand.command}: ${prompt}`);
 

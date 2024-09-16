@@ -1,9 +1,9 @@
 const { executeSelect, executeUpdate } = require('./database-handler');
-const { createYugi } = require('./card-creator.js');
+//const { createYugi } = require('./card-creator.js');
 
-const fs = require('fs');
-const path = require('path');
-const { getBuiltinModule } = require('process');
+//const fs = require('fs');
+//const path = require('path');
+//const { getBuiltinModule } = require('process');
 
 let NSFW = false;
 const generalNegativePrompts = [
@@ -11,8 +11,9 @@ const generalNegativePrompts = [
     "extra limbs", "extra fingers", "extra toes", "missing fingers", 
     "missing toes", "disfigured face", "low quality", "low resolution",
     "poorly drawn", "cloned face", "malformed", "ugly", "poor resolution",
-    "low res","poorly drawn face","twisted fingers", "missing face",
-    "bad anatomy", "disconnected limbs", "double image", "floating limbs"
+    "low res","poorly drawn face","twisted fingers", "disfigured fingers", 
+    "missing face", "disformed hand", "disfigured hand", "bad anatomy", 
+    "disconnected limbs", "double image", "floating limbs", "poor quality"
 ]
 
 function allowNSFW(state){
@@ -24,7 +25,7 @@ function allowNSFW(state){
     return NSFW;
 }
 
-async function addToQueue(requestor, prompt, modifier, negativePrompts) {
+async function addToQueue(requestor, command, prompt, modifier, negativePrompts) {
     const timestamp = Date.now();
     const cardName = await getCardName();
     const cardType = await getCardType();
@@ -67,10 +68,10 @@ async function addToQueue(requestor, prompt, modifier, negativePrompts) {
     console.log(`NSFW Value: ${nsfwValue}`);
 
     const insertQuery = `
-        INSERT INTO Jobs (timestamp, requestor, prompt, modifier, nsfw, name, type, status, generationId)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, Null)`;
+        INSERT INTO Jobs (timestamp, requestor, command, prompt, modifier, nsfw, name, type, status, generationId)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, Null)`;
 
-    await executeUpdate(insertQuery, [timestamp, requestor, prompt, modifier, nsfwValue, cardName, cardType]);
+    await executeUpdate(insertQuery, [timestamp, requestor, command, prompt, modifier, nsfwValue, cardName, cardType]);
     return;
 }
 
