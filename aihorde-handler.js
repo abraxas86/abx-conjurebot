@@ -66,14 +66,12 @@ async function sendRequest(job) {
         // Convert the '0'/'1' value from the database to a boolean
         const nsfwBoolean = job.nsfw === '1';  // '1' => true, '0' => false
 
-        console.log('Request Payload:', generationData);
-
         const response = await ai_horde.postAsyncImageGenerate({
             prompt: prompt,
             nsfw: nsfwBoolean,  // Pass as boolean
             allow_downgrade: allow_downgrade,
             replacement_filter: true,
-            model: model.model,
+            models: [model.model],
             token: stableHordeApiKey
         });
 
