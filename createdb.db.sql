@@ -6,6 +6,22 @@ CREATE TABLE IF NOT EXISTS "Names" (
 CREATE TABLE IF NOT EXISTS "Type" (
 	"type"	TEXT
 );
+CREATE TABLE IF NOT EXISTS "Archive" (
+	"date"	INTEGER,
+	"modifier"	TEXT,
+	"username"	TEXT
+);
+CREATE TABLE IF NOT EXISTS "Commands" (
+	"timestamp"	INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+	"command"	TEXT UNIQUE,
+	"modifier"	TEXT,
+	"negativePrompts"	TEXT,
+	"model"	TEXT DEFAULT 'stable_diffusion',
+	"setBy"	TEXT,
+	"botResponse"	TEXT DEFAULT NULL,
+	"extra_slow_workers"	INTEGER DEFAULT 0,
+	"steps"	INTEGER DEFAULT 30
+);
 CREATE TABLE IF NOT EXISTS "Jobs" (
 	"timestamp"	INTEGER,
 	"requestor"	TEXT,
@@ -14,19 +30,11 @@ CREATE TABLE IF NOT EXISTS "Jobs" (
 	"modifier"	TEXT,
 	"nsfw"	INTEGER,
 	"name"	TEXT,
-	"type"	TEXT
+	"type"	TEXT,
 	"status"	INTEGER,
 	"generationId"	TEXT
 );
-CREATE TABLE IF NOT EXISTS "commands" (
-	"timestamp"	INTEGER,
-	"command"	TEXT UNIQUE,
-	"modifier"	TEXT,
-	"negativePrompts"	TEXT,
-	"model"	TEXT,
-	"setBy"	TEXT,
-	"botResponse"	TEXT DEFAULT Null
-);
+
 INSERT INTO "Names" ("name","position") VALUES ('Snizzlefizzed',1),
  ('Glibberwocked',1),
  ('Quagglifed',1),
@@ -290,5 +298,5 @@ INSERT INTO "Type" ("type") VALUES ('Aqua'),
  ('Winged Beast'),
  ('Wyrm'),
  ('Zombie');
-COMMIT;
 
+COMMIT;

@@ -3,6 +3,8 @@ const { executeSelect, executeUpdate } = require('./database-handler')
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch'); // Use CommonJS-compatible import
+const { io } = require('./server-handler'); // Adjust path as needed
+
 
 
 const stableHordeApiKey = process.env.CONJURE_STABLEHORDE_API_KEY;
@@ -34,17 +36,19 @@ async function getModels(model = null) {
         const models = await ai_horde.getModels();
         // Sort models by performance (descending)
         models.sort((a, b) => b.performance - a.performance);
-        
-        // If a specific model is passed, filter and return that model's stats
+
+        // If a specific model or keyword is passed, filter models based on that
         if (model) {
-            // Make the model name lowercase for case-insensitive comparison
+            // Convert the search keyword to lowercase for case-insensitive comparison
             const lowerCaseModel = model.toLowerCase();
-            const modelStats = models.find(item => item.name.toLowerCase() === lowerCaseModel);
             
-            if (modelStats) {
-                return modelStats;
+            // Filter models to find all that include the keyword (fuzzy search)
+            const filteredModels = models.filter(item => item.name.toLowerCase().includes(lowerCaseModel));
+            
+            if (filteredModels.length > 0) {
+                return filteredModels;  // Return all matching models
             } else {
-                return `Model "${model}" not found.`;
+                return `No models found with the keyword "${model}".`;
             }
         }
         
@@ -57,6 +61,19 @@ async function getModels(model = null) {
 }
 
 
+async function cancelJob(generationID){
+    const canceled = await ai_horde.deleteImageGenerationRequest(generationID);
+    
+    if (canceled){
+        console.log (`Job successfully canceled: ${generationID}`);
+        await executeUpdate('UPDATE Jobs SET status = 99 WHERE generationID = ?', [generationID]);
+    } else {
+        console.error(`Error canceling request! ${generationID}`);
+    }
+
+    return canceled;
+}
+
 
 async function getJob() {
         const job = await executeSelect("SELECT *, _rowid_ AS rowid FROM jobs WHERE status = 0 ORDER BY timestamp ASC LIMIT 1");
@@ -67,6 +84,7 @@ async function getJob() {
         //console.log(`${colours.blue}-------------------------${colours.reset}\n`);
         return job;
 }
+
 
 async function sendRequest(job) {
     const allow_downgrade = true;
@@ -82,15 +100,28 @@ async function sendRequest(job) {
     try {
         // Convert the '0'/'1' value from the database to a boolean
         const nsfwBoolean = job.nsfw === '1';  // '1' => true, '0' => false
+        const extrasSlowWorkersBoolean = job.extra_slow_workers === '1';
 
-        const response = await ai_horde.postAsyncImageGenerate({
+        
+        const generationDataPayload = {
             prompt: prompt,
-            nsfw: nsfwBoolean,  // Pass as boolean
+            nsfw: nsfwBoolean,
             allow_downgrade: allow_downgrade,
             replacement_filter: true,
             models: [model.model],
-            token: stableHordeApiKey
-        });
+            extra_slow_workers: extrasSlowWorkersBoolean,
+            token: stableHordeApiKey,
+            params: {
+                //seed: ,  // Seed for generation
+                steps: job.steps,      // Number of steps for the generation
+                height: 1024,   // Height of the image
+                width: 1024,    // Width of the image
+            }
+        };
+
+
+
+        const response = await ai_horde.postAsyncImageGenerate(generationDataPayload);
 
         const generationId = response.id;
         await executeUpdate('UPDATE jobs SET generationId = ?, status = 1 WHERE rowid = ?', [generationId, job.rowid]);
@@ -107,11 +138,14 @@ async function checkJob(generationID) {
         console.log(`${colours.magenta}---- CHECKJOB RESULTS ----${colours.reset}`);
         console.log(response);
         console.log(`${colours.magenta}--------------------------${colours.reset}\n`);
+
+        // Emit the job status update including generationId
+        io.emit('jobStatusUpdate', { ...response, generationId: generationID });
+
         return response;
     } catch (err) {
         console.error("[ABX-Conjurebot: aihorde-handler] Error checking job status:", err);
 
-        // Handle different types of errors
         if (err.code === 'ETIMEDOUT') {
             console.error("Request timed out. Please check the network or the server.");
         } else if (err.code === 'ECONNREFUSED') {
@@ -120,10 +154,13 @@ async function checkJob(generationID) {
             console.error("An unexpected error occurred:", err.message);
         }
 
-        // Optionally, return a default or error response
+        // Emit error status including generationId
+        io.emit('jobStatusUpdate', { done: false, generationId: generationID });
+
         return { done: false }; // Adjust based on what your application expects
     }
 }
+
 
 
 
@@ -180,4 +217,4 @@ function formatDateToIso(epochtime){
 
 
 
-module.exports = { getJob, sendRequest, checkJob, getImage, saveImage, getModels };
+module.exports = { getJob, sendRequest, checkJob, getImage, saveImage, getModels, cancelJob };

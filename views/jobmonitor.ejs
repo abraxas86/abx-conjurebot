@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Job Monitor</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io(`http://${'<%= socketAddress %>'}:${'<%= socketPort %>'}`);
+
+            socket.on('connect', () => {
+                console.log('Connected to Socket.IO server');
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from Socket.IO server');
+            });
+
+            socket.on('jobStatusUpdate', (status) => {
+                console.log('Received jobStatusUpdate:', status);
+
+                // Update the page with the received job status
+                updateJobTable(status);
+            });
+
+            function updateJobTable(status) {
+                const tableBody = document.querySelector('#job-table tbody');
+
+                // Clear the existing rows
+                tableBody.innerHTML = '';
+
+                // Create a new row with the status data
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${status.requestor || 'N/A'}</td>
+                    <td>${status.generationId || 'N/A'}</td>
+                    <td>${status.queue_position || 'N/A'}</td>
+                    <td>${status.wait_time || 'N/A'}</td>
+                `;
+                tableBody.appendChild(row);
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>Active Jobs</h1>
+    <table id="job-table" border="1">
+        <thead>
+            <tr>
+                <th>Requestor</th>
+                <th>Generation ID</th>
+                <th>Position</th>
+                <th>Wait Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows will be dynamically added here -->
+        </tbody>
+    </table>
+</body>
+</html>

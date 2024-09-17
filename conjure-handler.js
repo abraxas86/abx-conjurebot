@@ -5,24 +5,24 @@ const { executeSelect, executeUpdate } = require('./database-handler');
 //const path = require('path');
 //const { getBuiltinModule } = require('process');
 
-let NSFW = false;
+let censored = false;
 const generalNegativePrompts = [
-    "poorly drawn", "disfigured", "mutilated", "missing limbs", 
-    "extra limbs", "extra fingers", "extra toes", "missing fingers", 
-    "missing toes", "disfigured face", "low quality", "low resolution",
-    "poorly drawn", "cloned face", "malformed", "ugly", "poor resolution",
-    "low res","poorly drawn face","twisted fingers", "disfigured fingers", 
-    "missing face", "disformed hand", "disfigured hand", "bad anatomy", 
-    "disconnected limbs", "double image", "floating limbs", "poor quality"
+    "lowres", "text", "error", "cropped", "worst quality", "low quality", "jpeg artifacts",
+    "ugly", "duplicate", "morbid", "mutilated", "out of frame", "extra fingers",
+    "mutated hands", "poorly drawn hands", "poorly drawn face", "mutation", "deformed",
+    "blurry", "dehydrated", "bad anatomy", "bad proportions", "extra limbs", "cloned face",
+    "disfigured", "gross proportions", "malformed limbs", "missing arms", "missing legs",
+    "extra arms", "extra legs", "fused fingers", "too many fingers", "long neck", "username",
+    "watermark", "signature"
 ]
 
 function allowNSFW(state){
-    if (state.toLowerCase() == "no" ||  state.toLowerCase() == "false" || state.toLowerCase() == "off" || state == "0") NSFW = false;
-    else if (state.toLowerCase() == "yes" ||  state.toLowerCase() == "true" || state.toLowerCase() == "on" || state == "1") NSFW = true;
-    else console.log(`[ABX-CONJURE: conjure-handler] ERROR Flipping NSFW. State (${state}) not recognized`);
+    if (state.toLowerCase() == "no" ||  state.toLowerCase() == "false" || state.toLowerCase() == "off" || state == "0") censored = true;
+    else if (state.toLowerCase() == "yes" ||  state.toLowerCase() == "true" || state.toLowerCase() == "on" || state == "1") censored = false;
+    else console.log(`[ABX-CONJURE: conjure-handler] ERROR Flipping censored. State (${state}) not recognized`);
 
-    console.log(`[ABX-CONJURE: conjure-handler] Allow NSFW: ${NSFW}`);
-    return NSFW;
+    console.log(`[ABX-CONJURE: conjure-handler] Censor NSFW: ${censored}`);
+    return censored;
 }
 
 async function addToQueue(requestor, command, prompt, modifier, negativePrompts) {
@@ -62,10 +62,10 @@ async function addToQueue(requestor, command, prompt, modifier, negativePrompts)
     console.log(`Final Modifier: ${modifier}`);
     console.log("----------------");
 
-    // Convert boolean NSFW to string 'true' or 'false'
-    const nsfwValue = NSFW ? '1' : '0';
+    // Convert boolean censored to string 'true' or 'false'
+    const nsfwValue = censored ? '1' : '0';
 
-    console.log(`NSFW Value: ${nsfwValue}`);
+    console.log(`Censored Value: ${nsfwValue}`);
 
     const insertQuery = `
         INSERT INTO Jobs (timestamp, requestor, command, prompt, modifier, nsfw, name, type, status, generationId)

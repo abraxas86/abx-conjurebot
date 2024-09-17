@@ -1,6 +1,6 @@
 const { executeSelect } = require('./database-handler');
 const { addToQueue, allowNSFW } = require('./conjure-handler.js');
-const { getJob, getImage, sendRequest, checkJob, saveImage, getModels } = require('./aihorde-handler.js');
+const { getJob, getImage, sendRequest, checkJob, saveImage, getModels, cancelJob } = require('./aihorde-handler.js');
 
 const { createYugi } = require('./card-creator.js');
 
@@ -12,6 +12,7 @@ async function setCommands() {
     commands = await executeSelect('SELECT command, modifier, negativePrompts, model, botResponse FROM commands ORDER BY command ASC');
     adminCommands = ['!getImage','!saveImage', '!nsfw', '!refresh-conjure']
     console.log('[ABX-Conjurebot: command-handler] Commands loaded: ', commands);
+    return;
 }
 
 // Handle command execution based on user message and auth level
@@ -26,6 +27,8 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             await setCommands();
             client.say(channel, `Conjurations updated by ${username}`);
             console.log(`[ABX-Conjurebot: command-handler] Commands refreshed by ${username}`);
+            const commandList = commands.map(cmd => cmd.command).join(', ');
+            client.say(channel, `Here are the available conjure commands: ${commandList}`);
         }
 
         // toggle NSFW
@@ -33,7 +36,9 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             const nsfwState = message.slice(5).trim();
             const NSFW =  allowNSFW(nsfwState);
             
-            client.say(channel, `NSFW conjuring is currently ${NSFW ? "enabled" : "disabled"}`);
+            // This is flipped because the actual variable is "censored" so true = SFW
+            // ...confusing, I know
+            client.say(channel, `NSFW conjuring is currently ${NSFW ? "disabled" : "enabled"}`);
         }
 
         // init job
@@ -85,19 +90,36 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             createYugi(genID);
         }
 
-        if (message.toLowerCase().startsWith('!checkmodel')){
-            const model = message.slice(12).trim().toLowerCase();
-
-            const stats = await getModels();  // Ensure getModels is awaited and invoked
-            console.log(stats);  // Log to see if stats is an array
+        if (message.toLowerCase().startsWith('!checkmodel')) {
+            const model = message.slice(12).trim();
+        
+            const modelStats = await getModels(model);
             
-            if (Array.isArray(stats)) {
-                const modelStats = stats.find(item => item.name.toLowerCase() === model);
+            if (typeof modelStats === 'string') {
+                // If the result is a string (e.g., error or "not found"), send that back
                 console.log(modelStats);
             } else {
-                console.log('stats is not an array:', stats);
+                // Send back the stats for the matching models or all models
+                console.log("=== MODEL STATS ===")
+                console.log(modelStats);
+                console.log("===================");
             }
         }
+
+        if (message.toLowerCase().startsWith('!canceljob')) {
+            const genID = message.slice(10).trim();
+            const canceled = await cancelJob(genID);
+
+            if (canceled){
+                client.say(channel, 'Job successfully canceled.');
+            } else {
+                client.say(channel, 'Error canceling job!');
+            }
+
+            return;
+            
+        }
+        
 
         if (message.toLowerCase().startsWith('!debug')){
             const blurb = message.slice(6).trim()
@@ -109,8 +131,13 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
     }
 
     if (matchedCommand) {
-        client.say(channel, matchedCommand.botResponse ?? "Let's see what I can conjure up...");
         const prompt = message.slice(matchedCommand.command.length).trim();
+        if (!prompt){
+            const commandList = commands.map(cmd => cmd.command).join(', ');
+            client.say(channel, `Here are the available conjure commands, don't forget to add a prompt!  ${commandList}`);
+            return;
+        }
+        client.say(channel, matchedCommand.botResponse ?? "Let's see what I can conjure up...");
 
         await addToQueue(username, matchedCommand.command, prompt, matchedCommand.modifier, matchedCommand.negativePrompts, matchedCommand.model);
 

@@ -1,9 +1,11 @@
+// server-handler.js
 require('dotenv').config();
 const { Server } = require('socket.io');
 const http = require('http');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { exec } = require('child_process');
 
 // Load environment variables
 const serverAddress = process.env.CONJURE_SERVER_ADDRESS || 'localhost';
@@ -27,27 +29,32 @@ app.get('/', (req, res) => {
     res.render('cardSpin', data);
 });
 
+// Route to render the job monitor page
+app.get('/jobmonitor', (req, res) => {
+    const data = {
+        socketAddress: serverAddress,
+        socketPort: serverPort
+    };
+    res.render('jobmonitor', data);  // Ensure the EJS file name is correct
+});
+
+
 // Route to display a grid of images from /public/images
 app.get('/images', (req, res) => {
     const imagesDir = path.join(__dirname, 'public/images');
 
-    // Read the files in the /public/images directory
     fs.readdir(imagesDir, (err, files) => {
         if (err) {
+            console.error("Unable to scan directory:", err);
             return res.status(500).send("Unable to scan directory");
         }
 
-        // Filter image files (optional: include more image extensions)
         const imageFiles = files.filter(file => file.endsWith('_yugi.png'));
 
-        // Process filenames to extract timestamp and username
         const imageDetails = imageFiles.map(file => {
-            // Remake timestamp:
-            const datePart = file.split('_')[0]
-            const timePart = file.split('_')[1].split('-')[0].replace(/\./g,':');
-            const timestamp = `${datePart} ${timePart}`
-
-            // Extract the username from filename
+            const datePart = file.split('_')[0];
+            const timePart = file.split('_')[1].split('-')[0].replace(/\./g, ':');
+            const timestamp = `${datePart} ${timePart}`;
             const username = file.split('-').pop().split('_')[0];
 
             return {
@@ -57,12 +64,28 @@ app.get('/images', (req, res) => {
             };
         });
 
-        // Render the view, passing the list of image details
         res.render('imageGrid', { images: imageDetails });
     });
 });
 
+// Route to fetch all active jobs and emit them via Socket.IO
+app.get('/start-job-monitor', (req, res) => {
+    exec('list-active-jobs', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error fetching active jobs: ${stderr}`);
+            return res.status(500).send('Error fetching active jobs');
+        }
 
+        try {
+            const jobs = JSON.parse(stdout);  // Expect JSON data
+            io.emit('jobQueue', jobs);
+            res.send('Job monitoring started');
+        } catch (parseError) {
+            console.error('Error parsing job list:', parseError);
+            res.status(500).send('Error parsing job list');
+        }
+    });
+});
 
 // Create an HTTP server and attach the Express app
 const httpServer = http.createServer(app);
@@ -79,7 +102,7 @@ io.on('connection', (socket) => {
     console.log(`${socket.id}: Client connected!`);
 
     socket.on('disconnect', () => {
-        console.log(`${socket.id}: client disconnected!`)
+        console.log(`${socket.id}: client disconnected!`);
     });
 });
 
