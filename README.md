@@ -1,4 +1,6 @@
-#Conjurebo
+### Note: This project is still *very* WIP
+
+# ABX-Conjurebot 
 This script combines AI_Horde and NodeJS to allow users in Twitch to create fake Yugioh cards using AI
 
 ## Setting up:
