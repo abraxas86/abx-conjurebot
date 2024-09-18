@@ -155,16 +155,10 @@ async function handleConjureJob(client, channel, username, prompt) {
             return;
         }
 
-        // Send the reques
+        // Send the request
         const genID = await sendRequest(job);
 
         console.log(genID);
-
-        if (typeof genID === 'object' && genID !== null) {
-            const canceled = await cancelJob(genID.generationId);
-           
-           return;
-        }
 
         // Wait for 5 seconds before checking the job status
         await new Promise(resolve => setTimeout(resolve, 5000));
@@ -173,9 +167,9 @@ async function handleConjureJob(client, channel, username, prompt) {
 
         // Cancel job if not possible:
         if (!status.is_possible){
-            await executeUpdate('UPDATE Jobs SET status = 99 WHERE generationId = ?', [generationId]);
+            await executeUpdate('UPDATE Jobs SET status = 99 WHERE generationId = ?', [genID]);
             console.error(`Status set to 99: ${genID} - ${job.prompt}`);
-            const asdf = await cancelJob(genID);
+            await cancelJob(genID);
 
             if (canceled) {
                 client.say(channel, `Sorry ${job.requestor}, your request for ${job.prompt} was not possible and has been canceled.`);
