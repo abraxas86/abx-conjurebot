@@ -62,16 +62,22 @@ async function getModels(model = null) {
 
 
 async function cancelJob(generationID){
-    const canceled = await ai_horde.deleteImageGenerationRequest(generationID);
-    
-    if (canceled){
-        console.log (`Job successfully canceled: ${generationID}`);
-        await executeUpdate('UPDATE Jobs SET status = 99 WHERE generationID = ?', [generationID]);
-    } else {
-        console.error(`Error canceling request! ${generationID}`);
+    try {
+        const response = await ai_horde.deleteImageGenerationRequest(generationID);
+        console.log("AI Horde cancel response:", response);  // Add this for debugging
+        
+        if (response?.success) { // Check based on the structure of the response
+            console.log(`Job successfully canceled: ${generationID}`);
+            await executeUpdate('UPDATE Jobs SET status = 99 WHERE generationID = ?', [generationID]);
+            return true;
+        } else {
+            console.error(`Error canceling request! ${generationID}`);
+            return false;
+        }
+    } catch (error) {
+        console.error(`Exception while canceling job ${generationID}:`, error);
+        return false;
     }
-
-    return canceled;
 }
 
 
@@ -92,38 +98,48 @@ async function sendRequest(job) {
 
     console.log(`job.command: ${job.command}`);
 
-    const [ model ] = await executeSelect('SELECT model FROM commands WHERE command = ?', [job.command]);
+    const [params] = await executeSelect('SELECT * FROM commands WHERE command = ?', [job.command]);
 
-    console.log(`${colours.magenta} ===== JOB DETAILS =====\n ${colours.cyan}${JSON.stringify(job)}\nmodel: ${model.model}\n${colours.magenta}=======================`)
-
+    console.log(`${colours.magenta} ===== JOB DETAILS =====\n ${colours.cyan}${JSON.stringify(job)}\n${colours.magenta}=======================`)
 
     try {
         // Convert the '0'/'1' value from the database to a boolean
-        const nsfwBoolean = job.nsfw === '1';  // '1' => true, '0' => false
-        const extrasSlowWorkersBoolean = job.extra_slow_workers === '1';
-
+        const nsfwBoolean = job.nsfw === 1;  // '1' => true, '0' => false
+        const extrasSlowWorkersBoolean = job.extra_slow_workers === '1';        
         
         const generationDataPayload = {
             prompt: prompt,
             nsfw: nsfwBoolean,
             allow_downgrade: allow_downgrade,
             replacement_filter: true,
-            models: [model.model],
+            models: [params.model],
             extra_slow_workers: extrasSlowWorkersBoolean,
-            token: stableHordeApiKey,
+            //token: stableHordeApiKey,   // I don't think I need this since I have my API Key in the header, and users interface with Twitch Chat so they have no way to provide an API key of their own?
             params: {
-                //seed: ,  // Seed for generation
-                steps: job.steps,      // Number of steps for the generation
-                height: 1024,   // Height of the image
-                width: 1024,    // Width of the image
+                //seed: ,           // Seed for generation
+                steps: job.steps,   // Number of steps for the generation
+                cfg_scale: job.cfg,
+                sampler: job.sampler,
+                height: 1024,      // Height of the image
+                width: 1024,       // Width of the image
             }
         };
 
-
+        console.log(`************************************`);
+        console.log(`NSFW: ${job.nsfw} || NSFW BOOLEAN: ${nsfwBoolean}`);
+        console.log(`PAYLOAD:`);
+        console.log(generationDataPayload);
+        console.log(`************************************`);
 
         const response = await ai_horde.postAsyncImageGenerate(generationDataPayload);
+ 
+        //console.log('------- REQUEST DETAILS -------');
+        //console.log(response);
+        //console.log('-------------------------------');
 
-        const generationId = response.id;
+
+        const generationId = response.id
+
         await executeUpdate('UPDATE jobs SET generationId = ?, status = 1 WHERE rowid = ?', [generationId, job.rowid]);
         return generationId;
     } catch (err) {
@@ -132,6 +148,9 @@ async function sendRequest(job) {
 }
 
 async function checkJob(generationID) {
+    
+    const [requestor] = await executeSelect('SELECT requestor FROM jobs WHERE generationId = ?', [generationID]);
+    
     try {
         const response = await ai_horde.getImageGenerationCheck(generationID);
         console.log(`[ABX-Conjurebot: aihorde-handler]`);
@@ -140,9 +159,10 @@ async function checkJob(generationID) {
         console.log(`${colours.magenta}--------------------------${colours.reset}\n`);
 
         // Emit the job status update including generationId
-        io.emit('jobStatusUpdate', { ...response, generationId: generationID });
+        io.emit('jobStatusUpdate', { ...response, generationId: generationID, requestor: requestor.requestor });
 
         return response;
+
     } catch (err) {
         console.error("[ABX-Conjurebot: aihorde-handler] Error checking job status:", err);
 
@@ -160,8 +180,6 @@ async function checkJob(generationID) {
         return { done: false }; // Adjust based on what your application expects
     }
 }
-
-
 
 
 async function getImage(generationID) {

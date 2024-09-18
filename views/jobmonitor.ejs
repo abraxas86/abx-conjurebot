@@ -2,6 +2,19 @@
 <html>
 <head>
     <title>Job Monitor</title>
+
+    <style>
+        .job {
+          background-color: #AF4C4C; 
+          color: #FFFFFF;
+          width: 100%;
+          font-family: monospace;
+          font-size: 15pt;
+          padding: 10px 30px 10px 30px;
+          border-radius: 10px 10px 10px 10px;
+        }
+    </style>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -23,38 +36,47 @@
             });
 
             function updateJobTable(status) {
-                const tableBody = document.querySelector('#job-table tbody');
+                const jobContainer = document.querySelector('#jobs');
 
-                // Clear the existing rows
-                tableBody.innerHTML = '';
+                // Check if a span with the matching id already exists
+                let job = document.getElementById(status.generationId);
 
-                // Create a new row with the status data
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${status.requestor || 'N/A'}</td>
-                    <td>${status.generationId || 'N/A'}</td>
-                    <td>${status.queue_position || 'N/A'}</td>
-                    <td>${status.wait_time || 'N/A'}</td>
-                `;
-                tableBody.appendChild(row);
+                // remove job from list when completed
+                if (status.done){
+                    jobContainer.removeChild(job);
+                }
+
+                if (job) {
+                    // Update the existing span's content
+                    let eta = {
+                        minutes: Math.floor(status.wait_time / 60),
+                        seconds: status.wait_time % 60
+                    };
+
+                    job.textContent = `   | Position: ${status.queue_position} | ETA: ${eta.minutes}:${eta.seconds}`;
+                } else {
+                    // Create a new span if it doesn't exist
+                    job = document.createElement('span');
+                    job.id = status.generationId;
+                    job.className = 'job';
+
+                    let eta = {
+                        minutes: Math.floor(status.wait_time / 60),
+                        seconds: status.wait_time % 60
+                    };
+
+                    job.textContent = ` ${status.requestor} | Position: ${status.queue_position} | ETA: ${eta.minutes}:${eta.seconds}`;
+
+                    jobContainer.appendChild(job);
+                }
             }
         });
     </script>
 </head>
 <body>
     <h1>Active Jobs</h1>
-    <table id="job-table" border="1">
-        <thead>
-            <tr>
-                <th>Requestor</th>
-                <th>Generation ID</th>
-                <th>Position</th>
-                <th>Wait Time</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Rows will be dynamically added here -->
-        </tbody>
-    </table>
+    <div id="jobs">
+        <!-- Jobs will be added here dynamically -->
+    </div>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const { executeSelect } = require('./database-handler');
+const { executeSelect, executeUpdate } = require('./database-handler');
 const { addToQueue, allowNSFW } = require('./conjure-handler.js');
 const { getJob, getImage, sendRequest, checkJob, saveImage, getModels, cancelJob } = require('./aihorde-handler.js');
 
@@ -38,7 +38,7 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             
             // This is flipped because the actual variable is "censored" so true = SFW
             // ...confusing, I know
-            client.say(channel, `NSFW conjuring is currently ${NSFW ? "disabled" : "enabled"}`);
+            client.say(channel, `NSFW conjuring is currently ${NSFW ? "enabled" : "disabled"}`);
         }
 
         // init job
@@ -70,8 +70,6 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             } else {
                 client.say(channel, 'Still in the queue...');
             }
-
-        
         }
          
         // Get packet from completed job
@@ -160,21 +158,59 @@ async function handleConjureJob(client, channel, username, prompt) {
         // Send the reques
         const genID = await sendRequest(job);
 
-        // Wait for 2 seconds before checking the job status
+        console.log(genID);
+
+        if (typeof genID === 'object' && genID !== null) {
+            const canceled = await cancelJob(genID.generationId);
+           
+           return;
+        }
+
+        // Wait for 5 seconds before checking the job status
         await new Promise(resolve => setTimeout(resolve, 5000));
 
         let status = await checkJob(genID);
 
+        // Cancel job if not possible:
+        if (!status.is_possible){
+            await executeUpdate('UPDATE Jobs SET status = 99 WHERE generationId = ?', [generationId]);
+            console.error(`Status set to 99: ${genID} - ${job.prompt}`);
+            const asdf = await cancelJob(genID);
+
+            if (canceled) {
+                client.say(channel, `Sorry ${job.requestor}, your request for ${job.prompt} was not possible and has been canceled.`);
+            } else {
+                client.say(channel, `Sorry ${job.requestor}, your request for ${job.prompt} was not possible but there was a problem canceling it.`);
+            }
+
+            return;
+        }
+
         // Loop until the job is done
         while (!status.done) {
-            console.log(`Job ${genID} not done yet. Checking again in 5 seconds...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Calculate the dynamic wait time
+            let waitTime = status.wait_time / 2;
+            if (waitTime > 60) {
+                waitTime = 60;
+            } else if (waitTime < 5) {
+                waitTime = 5;
+            }
+
+            console.log(`Job ${genID} not done yet. Checking again in ${Math.floor(waitTime / 60 )} minutes and ${waitTime % 60} seconds...`);
+
+            // Wait for the calculated time before checking the status again
+            await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+
+            // Check the job status again
             status = await checkJob(genID);
         }
 
         // Get the image and process it
         const packet = await getImage(genID);
         const imgUrl = packet.generations[0].img;
+
+        console.log(packet.generations[0].gen_metadata)
+
 
         // Notify the user
         client.say(channel, `${username}: here is your image for: ${prompt}!`)
@@ -188,7 +224,5 @@ async function handleConjureJob(client, channel, username, prompt) {
         console.error(`An error occurred while processing the job:`, error);
     }
 }
-
-
 
 module.exports = { setCommands, handleCommands };
