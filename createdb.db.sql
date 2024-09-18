@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS "Commands" (
 	"setBy"	TEXT,
 	"botResponse"	TEXT DEFAULT NULL,
 	"extra_slow_workers"	INTEGER DEFAULT 0,
-	"steps"	INTEGER DEFAULT 30
+	"steps"	INTEGER DEFAULT 30,
+	"cfg"	INTEGER DEFAULT 1,
+	"sampler"	TEXT DEFAULT 'k_euler'
 );
 CREATE TABLE IF NOT EXISTS "Jobs" (
 	"timestamp"	INTEGER,
