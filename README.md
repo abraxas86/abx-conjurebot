@@ -21,3 +21,13 @@ The broadcaster has the ability to manually process a job via:
 2. `!checkjob [generationID]`: Will check the status of the job.  If completed, it will automatically fire the getImage process.  
 3. `!getimage [generationID]`: Will save the image locally and post the link to the image in chat.  
 4. `!yugi [generationID]`: Will run the script to create and save the Yugioh card, and fire off the socket emit to trigger the website animation
+
+Jobs can also be canceled via  `!canceljob [generationID]`
+
+The broadcaster can output information on models by using `!checkmodel [model name]`. This will perform a fuzzy search by default.
+
+## Online job monitor
+Heading to `http://[address]:[port]/jobmonitor` will take you to the online job monitor, which will show information specific to active jobs (username of requestor, position in queue, ETA, and prompt).  This can be added as a browser source in OBS.
+
+## Online card gallery
+Heading to `http://[address]:[port]/images` will take you to the card gallery, where you will see all of the generated cards.  Clicking on them will take you through to the full-sized version.
