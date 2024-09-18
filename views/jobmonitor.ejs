@@ -4,14 +4,33 @@
     <title>Job Monitor</title>
 
     <style>
+        #jobs {
+            display: flex;
+            flex-direction: column; /* Stack items vertically */
+            gap: 5px; /* Optional: space between items */
+        }
+
         .job {
-          background-color: #AF4C4C; 
-          color: #FFFFFF;
-          width: 100%;
-          font-family: monospace;
-          font-size: 15pt;
-          padding: 10px 30px 10px 30px;
-          border-radius: 10px 10px 10px 10px;
+            background-color: #AF4C4C; 
+            color: #FFFFFF;
+            font-family: monospace;
+            font-size: 15pt;
+            padding: 10px 30px;
+            border-radius: 10px;
+            transform: translateX(-100%); /* Start position for slide-in animation */
+            transition: transform 0.5s ease, opacity 0.5s ease; /* Transition for sliding and fading */
+            opacity: 0; /* Initially hidden */
+            white-space: nowrap; /* Prevent text from wrapping */
+        }
+
+        .job.show {
+            transform: translateX(0); /* End position for slide-in animation */
+            opacity: 1; /* Visible */
+        }
+
+        .job.hide {
+            opacity: 0; /* Fade out */
+            transform: translateX(-100%); /* Slide out */
         }
     </style>
 
@@ -35,46 +54,67 @@
                 updateJobTable(status);
             });
 
+            function formatNumber(number) {
+                return String(number).padStart(2, '0');
+            }
+
             function updateJobTable(status) {
                 const jobContainer = document.querySelector('#jobs');
 
                 // Check if a span with the matching id already exists
                 let job = document.getElementById(status.generationId);
 
-                // remove job from list when completed
-                if (status.done){
-                    jobContainer.removeChild(job);
-                }
-
-                if (job) {
-                    // Update the existing span's content
-                    let eta = {
-                        minutes: Math.floor(status.wait_time / 60),
-                        seconds: status.wait_time % 60
-                    };
-
-                    job.textContent = `   | Position: ${status.queue_position} | ETA: ${eta.minutes}:${eta.seconds}`;
+                if (status.done) {
+                    if (job) {
+                        job.classList.add('hide');
+                        setTimeout(() => jobContainer.removeChild(job), 500); // Remove after animation
+                    }
                 } else {
-                    // Create a new span if it doesn't exist
-                    job = document.createElement('span');
-                    job.id = status.generationId;
-                    job.className = 'job';
+                    if (job) {
+                        // Update the existing span's content
+                        let eta = Math.floor(status.wait_time / 60) * 60 + (status.wait_time % 60); // Convert to total seconds
+                        job.dataset.eta = eta; // Update ETA for sorting
 
-                    let eta = {
-                        minutes: Math.floor(status.wait_time / 60),
-                        seconds: status.wait_time % 60
-                    };
+                        job.textContent = ` ${status.requestor} | Position: ${formatNumber(status.queue_position)} | ETA: ${formatNumber(Math.floor(status.wait_time / 60))}:${formatNumber(status.wait_time % 60)} | ${status.prompt}`;
 
-                    job.textContent = ` ${status.requestor} | Position: ${status.queue_position} | ETA: ${eta.minutes}:${eta.seconds}`;
+                        // Ensure it�s visible before sorting
+                        job.classList.remove('hide');
+                        job.classList.add('show');
+                        sortJobs(jobContainer);
+                    } else {
+                        // Create a new span if it doesn't exist
+                        job = document.createElement('span');
+                        job.id = status.generationId;
+                        job.className = 'job'; // Add the 'show' class to animate
 
-                    jobContainer.appendChild(job);
+                        let eta = Math.floor(status.wait_time / 60) * 60 + (status.wait_time % 60); // Convert to total seconds
+                        job.dataset.eta = eta; // Store ETA for sorting
+
+                        job.textContent = ` ${status.requestor} | Position: ${formatNumber(status.queue_position)} | ETA: ${formatNumber(Math.floor(status.wait_time / 60))}:${formatNumber(status.wait_time % 60)}`;
+
+                        jobContainer.appendChild(job);
+                        // Force reflow to ensure animation applies
+                        job.offsetHeight; // Trigger a reflow
+                        job.classList.add('show');
+                    }
                 }
+
+                // Always sort after updating
+                sortJobs(jobContainer);
+            }
+
+            function sortJobs(container) {
+                const jobs = Array.from(container.querySelectorAll('.job'));
+                jobs.sort((a, b) => a.dataset.eta - b.dataset.eta); // Sort by ETA
+
+                // Clear container and re-append sorted jobs
+                container.innerHTML = '';
+                jobs.forEach(job => container.appendChild(job));
             }
         });
     </script>
 </head>
 <body>
-    <h1>Active Jobs</h1>
     <div id="jobs">
         <!-- Jobs will be added here dynamically -->
     </div>

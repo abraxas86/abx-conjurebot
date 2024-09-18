@@ -117,9 +117,9 @@ async function sendRequest(job) {
             //token: stableHordeApiKey,   // I don't think I need this since I have my API Key in the header, and users interface with Twitch Chat so they have no way to provide an API key of their own?
             params: {
                 //seed: ,           // Seed for generation
-                steps: job.steps,   // Number of steps for the generation
-                cfg_scale: job.cfg,
-                sampler: job.sampler,
+                steps: params.steps,   // Number of steps for the generation
+                //cfg_scale: params.cfg,
+                sampler: params.sampler,
                 height: 1024,      // Height of the image
                 width: 1024,       // Width of the image
             }
@@ -149,8 +149,8 @@ async function sendRequest(job) {
 
 async function checkJob(generationID) {
     
-    const [requestor] = await executeSelect('SELECT requestor FROM jobs WHERE generationId = ?', [generationID]);
-    
+    const [ reqPrompt ] = await executeSelect('SELECT requestor, prompt FROM jobs WHERE generationId = ?', [generationID]);
+
     try {
         const response = await ai_horde.getImageGenerationCheck(generationID);
         console.log(`[ABX-Conjurebot: aihorde-handler]`);
@@ -159,7 +159,7 @@ async function checkJob(generationID) {
         console.log(`${colours.magenta}--------------------------${colours.reset}\n`);
 
         // Emit the job status update including generationId
-        io.emit('jobStatusUpdate', { ...response, generationId: generationID, requestor: requestor.requestor });
+        io.emit('jobStatusUpdate', { ...response, generationId: generationID, requestor: reqPrompt.requestor, prompt: reqPrompt.prompt });
 
         return response;
 
