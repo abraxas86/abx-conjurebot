@@ -165,18 +165,12 @@ async function handleConjureJob(client, channel, username, prompt) {
 
         let status = await checkJob(genID);
 
-        // Cancel job if not possible:
-        if (!status.is_possible){
+        // Cancel job if not possible
+        if (!status.is_possible) {
             await executeUpdate('UPDATE Jobs SET status = 99 WHERE generationId = ?', [genID]);
             console.error(`Status set to 99: ${genID} - ${job.prompt}`);
             await cancelJob(genID);
-
-            if (canceled) {
-                client.say(channel, `Sorry ${job.requestor}, your request for ${job.prompt} was not possible and has been canceled.`);
-            } else {
-                client.say(channel, `Sorry ${job.requestor}, your request for ${job.prompt} was not possible but there was a problem canceling it.`);
-            }
-
+            client.say(channel, `Sorry ${job.requestor}, your request for ${job.prompt} was not possible and has been canceled.`);
             return;
         }
 
@@ -190,7 +184,7 @@ async function handleConjureJob(client, channel, username, prompt) {
                 waitTime = 5;
             }
 
-            console.log(`Job ${genID} not done yet. Checking again in ${Math.floor(waitTime / 60 )} minutes and ${waitTime % 60} seconds...`);
+            console.log(`Job ${genID} not done yet. Checking again in ${Math.floor(waitTime / 60)} minutes and ${waitTime % 60} seconds...`);
 
             // Wait for the calculated time before checking the status again
             await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
@@ -201,22 +195,38 @@ async function handleConjureJob(client, channel, username, prompt) {
 
         // Get the image and process it
         const packet = await getImage(genID);
-        const imgUrl = packet.generations[0].img;
 
-        console.log(packet.generations[0].gen_metadata)
+        if (packet && packet.generations && packet.generations.length > 0) {
+            const generation = packet.generations[0];
 
+            // Check if job was censored and handle accordingly
+            if (generation.gen_metadata && generation.gen_metadata.length > 0) {
+                const metadataItem = generation.gen_metadata[0]; // Access the first item
+                if (metadataItem.type.toLowerCase() === 'censorship') {
+                    console.error("Job completed, but returned as censored:", metadataItem.value);
+                    client.say(channel, `@${job.requestor} your job finished, but was censored. Please try again.`);
+                    return;
+                }
+            }
 
-        // Notify the user
-        client.say(channel, `${username}: here is your image for: ${prompt}!`)
-        client.say(channel, `Click at your own risk: ${imgUrl}`);
+            const imgUrl = generation.img;
 
-        // Save the image and create the Yugi
-        await saveImage(imgUrl, genID);
-        await createYugi(genID);
+            // Notify the user
+            client.say(channel, `${username}: here is your image for: ${prompt}!`);
+            client.say(channel, `Click at your own risk: ${imgUrl}`);
+
+            // Save the image and create the Yugi card
+            await saveImage(imgUrl, genID);
+            await createYugi(genID);
+
+        } else {
+            client.say(channel, `No image found for this job.`);
+        }
 
     } catch (error) {
         console.error(`An error occurred while processing the job:`, error);
     }
 }
+
 
 module.exports = { setCommands, handleCommands };

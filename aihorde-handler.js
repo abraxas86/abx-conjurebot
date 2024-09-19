@@ -69,11 +69,12 @@ async function cancelJob(generationID){
         if (response?.success) { // Check based on the structure of the response
             console.log(`Job successfully canceled: ${generationID}`);
             await executeUpdate('UPDATE Jobs SET status = 99 WHERE generationID = ?', [generationID]);
-            return true;
         } else {
             console.error(`Error canceling request! ${generationID}`);
-            return false;
         }
+
+        return response;
+
     } catch (error) {
         console.error(`Exception while canceling job ${generationID}:`, error);
         return false;
