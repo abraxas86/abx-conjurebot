@@ -4,7 +4,9 @@
 This script combines AI_Horde and NodeJS to allow users in Twitch to create fake Yugioh cards using AI
 
 ## Setting up:
-Edit the .env_template file to suit your needs.  Save as `.env`
+1. Edit the .env_template file to suit your needs.  Save as `.env`
+2. Build the database with the included .sql file.
+3. Create the commands and attributes (see the Commands table).
 
 ## How to start the bot:
 `./start.sh`
