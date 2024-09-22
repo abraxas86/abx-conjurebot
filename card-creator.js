@@ -6,6 +6,9 @@ const { io } = require('./server-handler');
 
 const imageDir = path.join(__dirname, 'public', 'images');
 
+async function createPokemon(generationID){
+    
+}
 
 async function createYugi(generationID) {
     // Get path of saved webp: filename will contain the generationID

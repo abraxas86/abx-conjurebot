@@ -29,7 +29,7 @@ const AuthLevel = {
     BROADCASTER: 5,
 };
 
-const prefix = `${colors.blue}[Conjure-Server]: `;
+const prefix = `${colors.cyan}[Conjure-Server]: `;
 
 
 async function main() {

@@ -1,11 +1,13 @@
 const { executeSelect, executeUpdate } = require('./database-handler');
 const { addToQueue, allowNSFW } = require('./conjure-handler.js');
-const { getJob, getImage, sendRequest, checkJob, saveImage, getModels, cancelJob } = require('./aihorde-handler.js');
+const { getJob, getImage, sendRequest, checkJob, saveImage, getModels, cancelJob, getWorkers } = require('./aihorde-handler.js');
+const { getTextResponse } = require('./aihorde_text-handler.js');
 
 const { createYugi } = require('./card-creator.js');
 
 let commands = [];
 let adminCommands = [];
+let botname;
 
 // Load commands from the database
 async function setCommands() {
@@ -101,8 +103,38 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
                 console.log("=== MODEL STATS ===")
                 console.log(modelStats);
                 console.log("===================");
+
+                return; 
             }
         }
+
+        if (message.toLowerCase().startsWith('!getworkers')) {
+            const workerPart = message.slice(12).trim(); // Get everything after "!getworkers"
+        
+            // Adjust regex to capture everything after "-models"
+            const modelMatch = workerPart.match(/-model\s+(.+)/); // Capture all after "-models"
+            let query = { worker: null, model: null };
+        
+            if (modelMatch) {
+                query.model = modelMatch[1].trim(); // Capture the full model string
+            }
+        
+            // Remove the model part from workerPart
+            query.worker = workerPart.replace(modelMatch ? modelMatch[0] : '', '').trim();
+        
+            const workerInfo = await getWorkers(query);
+            console.log('======== WORKERS ========');
+            console.log(workerInfo);
+            console.log('Model:', query.model); // Log the extracted model
+            console.log('=========================');
+        
+            return;
+        }
+        
+        
+        
+        
+        
 
         if (message.toLowerCase().startsWith('!canceljob')) {
             const genID = message.slice(10).trim();
@@ -114,15 +146,15 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
                 client.say(channel, 'Error canceling job!');
             }
 
-            return;
-            
+            return
         }
         
 
         if (message.toLowerCase().startsWith('!debug')){
             const blurb = message.slice(6).trim()
 
-            await getModels();
+            await sendTextRequest(blurb);
+            return;
         }
 
 
@@ -199,7 +231,7 @@ async function handleConjureJob(client, channel, username, prompt) {
         if (packet && packet.generations && packet.generations.length > 0) {
             const generation = packet.generations[0];
 
-            // Check if job was censored and handle accordingly
+            // Check if job was censored.  Cancel further processing if it is.
             if (generation.gen_metadata && generation.gen_metadata.length > 0) {
                 const metadataItem = generation.gen_metadata[0]; // Access the first item
                 if (metadataItem.type.toLowerCase() === 'censorship') {

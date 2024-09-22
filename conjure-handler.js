@@ -6,7 +6,8 @@ const { executeSelect, executeUpdate } = require('./database-handler');
 //const { getBuiltinModule } = require('process');
 
 let NSFW  = false;
-const generalNegativePrompts = [
+const generalNegativePrompts = [];
+/*
     "lowres", "text", "error", "cropped", "worst quality", "low quality", "jpeg artifacts",
     "ugly", "duplicate", "morbid", "mutilated", "out of frame", "extra fingers",
     "mutated hands", "poorly drawn hands", "poorly drawn face", "mutation", "deformed",
@@ -14,7 +15,7 @@ const generalNegativePrompts = [
     "disfigured", "gross proportions", "malformed limbs", "missing arms", "missing legs",
     "extra arms", "extra legs", "fused fingers", "too many fingers", "long neck", "username",
     "watermark", "signature"
-]
+]*/
 
 function allowNSFW(state){
     if (state.toLowerCase() == "no" ||  state.toLowerCase() == "false" || state.toLowerCase() == "off" || state == "0") NSFW = false;

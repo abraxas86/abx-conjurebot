@@ -13,7 +13,6 @@
         }
 
         body {
-            /* Remove flexbox styles for default positioning */
             display: block; /* Default display */
         }
 
@@ -70,7 +69,8 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let isSpinning = false;
+        let isSpinning = false;  // Whether a card is currently spinning
+        let cardQueue = [];  // Queue to store incoming cards
 
         socket.on('connect', () => {
             console.log('Connected with ID: ', socket.id);
@@ -78,6 +78,19 @@
 
         socket.on('cardCompleted', (imageUrl) => {
             console.log(`Card received! ${imageUrl}`);
+            cardQueue.push(imageUrl);  // Add the new card to the queue
+            processQueue();  // Start processing the queue
+        });
+
+        function processQueue() {
+            if (isSpinning || cardQueue.length === 0) return;  // If a card is spinning or queue is empty, do nothing
+
+            const imageUrl = cardQueue.shift();  // Get the next card in the queue
+            spinCard(imageUrl);
+        }
+
+        function spinCard(imageUrl) {
+            isSpinning = true;
             const imgDir = '/images'; // Ensure this path is correct
             const cardFace = `${imgDir}/${imageUrl}?cache=${Date.now()}`;
             console.log(cardFace);
@@ -89,28 +102,26 @@
             cardFront.style.backgroundImage = `url(${cardFace})`;
 
             // Start the fade-in and spinning
-            if (!isSpinning) {
-                isSpinning = true;
-                cardContainer.style.opacity = '1'; // Fade in to 100% opacity over 2 seconds
-                cardInner.style.transition = 'transform 6s ease-in-out'; // Ensure spin duration
-                cardInner.style.transform = 'rotateY(1080deg)'; // Spin 3 full times
+            cardContainer.style.opacity = '1'; // Fade in to 100% opacity
+            cardInner.style.transition = 'transform 6s ease-in-out'; // Ensure spin duration
+            cardInner.style.transform = 'rotateY(1080deg)'; // Spin 3 full times
 
-                // Wait for spinning to complete
+            // Wait for spinning to complete
+            setTimeout(() => {
+                cardInner.style.transition = 'none'; // Disable transition to immediately stop spin
+                cardInner.style.transform = 'rotateY(0deg)'; // Ensure card stops facing front
                 setTimeout(() => {
-                    cardInner.style.transition = 'none'; // Disable transition to immediately stop spin
-                    cardInner.style.transform = 'rotateY(0deg)'; // Ensure card stops facing front
+                    // Show the front of the card for 5 seconds
                     setTimeout(() => {
-                        // Show the front of the card for 5 seconds
+                        cardContainer.style.opacity = '0'; // Fade out over 3 seconds
                         setTimeout(() => {
-                            cardContainer.style.opacity = '0'; // Fade out over 3 seconds
-                            setTimeout(() => {
-                                isSpinning = false;
-                            }, 3000); // Time to complete the fade out
-                        }, 5000); // Time to display the card front
-                    }, 100); // Small delay to ensure the rotation stops properly
-                }, 6000); // Total duration of spinning
-            }
-        });
+                            isSpinning = false;
+                            processQueue();  // Process the next card in the queue
+                        }, 3000); // Time to complete the fade out
+                    }, 5000); // Time to display the card front
+                }, 100); // Small delay to ensure the rotation stops properly
+            }, 6000); // Total duration of spinning
+        }
     </script>
 </body>
 </html>
