@@ -1,7 +1,6 @@
 const { executeSelect, executeUpdate } = require('./database-handler');
 const { addToQueue, allowNSFW } = require('./conjure-handler.js');
 const { getJob, getImage, sendRequest, checkJob, saveImage, getModels, cancelJob, getWorkers } = require('./aihorde-handler.js');
-const { getTextResponse } = require('./aihorde_text-handler.js');
 
 const { createYugi } = require('./card-creator.js');
 
@@ -202,7 +201,7 @@ async function handleConjureJob(client, channel, username, prompt) {
             return;
         }
         else {
-            client.say(channel, `@${job.requestor} the ETA on your job is approximately ${Math.floor(status.wait_time / 60 } minutes and ${status.wait_time % 60} seconds...`);
+            client.say(channel, `@${job.requestor} the ETA on your job is approximately ${Math.floor(status.wait_time / 60) } minutes and ${status.wait_time % 60} seconds...`);
          }
         // Loop until the job is done
         while (!status.done) {
