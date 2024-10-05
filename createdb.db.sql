@@ -6,24 +6,6 @@ CREATE TABLE IF NOT EXISTS "Names" (
 CREATE TABLE IF NOT EXISTS "Type" (
 	"type"	TEXT
 );
-CREATE TABLE IF NOT EXISTS "Archive" (
-	"date"	INTEGER,
-	"modifier"	TEXT,
-	"username"	TEXT
-);
-CREATE TABLE IF NOT EXISTS "Commands" (
-	"timestamp"	INTEGER DEFAULT (strftime('%s', 'now') * 1000),
-	"command"	TEXT UNIQUE,
-	"modifier"	TEXT,
-	"negativePrompts"	TEXT,
-	"model"	TEXT DEFAULT 'stable_diffusion',
-	"setBy"	TEXT,
-	"botResponse"	TEXT DEFAULT NULL,
-	"extra_slow_workers"	INTEGER DEFAULT 0,
-	"steps"	INTEGER DEFAULT 30,
-	"cfg"	INTEGER DEFAULT 1,
-	"sampler"	TEXT DEFAULT 'k_euler'
-);
 CREATE TABLE IF NOT EXISTS "Jobs" (
 	"timestamp"	INTEGER,
 	"requestor"	TEXT,
@@ -35,6 +17,23 @@ CREATE TABLE IF NOT EXISTS "Jobs" (
 	"type"	TEXT,
 	"status"	INTEGER,
 	"generationId"	TEXT
+);
+CREATE TABLE IF NOT EXISTS "Commands" (
+	"enabled"	INTEGER DEFAULT 1,
+	"timestamp"	INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+	"command"	TEXT UNIQUE,
+	"modifier"	TEXT,
+	"negativePrompts"	TEXT,
+	"model"	TEXT DEFAULT 'stable_diffusion',
+	"setBy"	TEXT,
+	"botResponse"	TEXT DEFAULT NULL,
+	"extra_slow_workers"	INTEGER DEFAULT 0,
+	"steps"	INTEGER DEFAULT 30,
+	"cfg"	INTEGER DEFAULT 5,
+	"sampler"	TEXT DEFAULT 'k_euler',
+	"clip_skip"	INTEGER,
+	"hires_fix"	INTEGER DEFAULT 'true',
+	"karras"	INTEGER DEFAULT null
 );
 
 INSERT INTO "Names" ("name","position") VALUES ('Snizzlefizzed',1),
@@ -248,6 +247,7 @@ INSERT INTO "Names" ("name","position") VALUES ('Snizzlefizzed',1),
  ('Skripple',2),
  ('Frungle',2),
  ('Skrumpus',2);
+
 INSERT INTO "Type" ("type") VALUES ('Aqua'),
  ('Beast'),
  ('Beast-Warrior'),

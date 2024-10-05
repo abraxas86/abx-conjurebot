@@ -2,8 +2,11 @@
 botconfig.json
 .env
 
-# Dev notes
+# Temp dev stuff
 notes.txt
+TO DO.txt
+logtext.txt
+
 
 # images
 public/images/*

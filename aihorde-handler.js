@@ -30,6 +30,44 @@ const ai_horde = new AIHorde({
     client_agent: client_agent
 });
 
+async function getWorkers(searchParams) {
+    try {
+        const workers = await ai_horde.getWorkers();
+
+        // Sort workers by name
+        workers.sort((a, b) => a.name.localeCompare(b.name));
+
+        // If both searchParams.worker and searchParams.model are null, return all workers
+        if (!searchParams.worker && !searchParams.model) {
+            return workers;
+        }
+
+        // Filter workers based on search parameters
+        const filteredWorkers = workers.filter(item => {
+            const matchesWorker = searchParams.worker 
+                ? item.name.toLowerCase().includes(searchParams.worker.toLowerCase()) 
+                : true;
+
+            const matchesModel = searchParams.model 
+                ? item.models && item.models.some(model => model.toLowerCase().includes(searchParams.model.toLowerCase())) 
+                : true; 
+
+            return matchesWorker && matchesModel;
+        });
+
+        // Check if any workers were found after filtering
+        if (filteredWorkers.length > 0) {
+            return filteredWorkers;
+        } else {
+            return `No workers found with the specified criteria.`;
+        }
+    } catch (error) {
+        console.error('Error fetching workers:', error);
+        return 'Error fetching workers';
+    }
+}
+
+
 async function getModels(model = null) {
     try {
         // Call to get models from ai_horde
@@ -117,12 +155,14 @@ async function sendRequest(job) {
             extra_slow_workers: extrasSlowWorkersBoolean,
             //token: stableHordeApiKey,   // I don't think I need this since I have my API Key in the header, and users interface with Twitch Chat so they have no way to provide an API key of their own?
             params: {
-                //seed: ,           // Seed for generation
-                //steps: params.steps,   // Number of steps for the generation
-                //cfg_scale: params.cfg,
-                //sampler: params.sampler,
-                height: 1024,      // Height of the image
-                width: 1024,       // Width of the image
+                steps: params.steps || 30,
+                cfg_scale: params.cfg || 5,
+                sampler: params.sampler || 'k_euler',
+                clip_skip: params.clip_skip || 0,
+                hires_fix: params.hires_fix === true,
+                karras: params.karras === true,
+                height: 832,      // Height of the image
+                width: 832,       // Width of the image
             }
         };
 
@@ -236,4 +276,4 @@ function formatDateToIso(epochtime){
 
 
 
-module.exports = { getJob, sendRequest, checkJob, getImage, saveImage, getModels, cancelJob };
+module.exports = { getJob, sendRequest, checkJob, getImage, saveImage, getModels, cancelJob, getWorkers };

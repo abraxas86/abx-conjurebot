@@ -1,13 +1,7 @@
 const { connectToTwitch } = require('./twitch-handler');
 const { setCommands, handleCommands } = require('./command-handler.js');
-const { handleJob, POLL_INTERVAL } = require('./job-handler');
-const { server } = require ('./server-handler');
-
 
 require('dotenv').config();
-
-const serverAddress = process.env.CONJURE_SERVER_ADDRESS || 'localhost';
-const serverPort = process.env.CONJURE_SERVER_PORT || 3000;
 
 const colors = {
     reset: "\x1b[0m",

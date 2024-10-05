@@ -11,9 +11,9 @@ let botname;
 
 // Load commands from the database
 async function setCommands() {
-    commands = await executeSelect('SELECT command, modifier, negativePrompts, model, botResponse FROM commands ORDER BY command ASC');
+    commands = await executeSelect('SELECT command, modifier, negativePrompts, model, botResponse FROM commands WHERE enabled = ? ORDER BY command ASC',[1]);
     adminCommands = ['!getImage','!saveImage', '!nsfw', '!refresh-conjure']
-    console.log('[ABX-Conjurebot: command-handler] Commands loaded: ', commands);
+    console.log('[ABX-Conjurebot: command-handler] Commands loaded: ', commands.map(cmd => cmd.command).join(', ') );
     return;
 }
 
@@ -131,11 +131,7 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             return;
         }
         
-        
-        
-        
-        
-
+  
         if (message.toLowerCase().startsWith('!canceljob')) {
             const genID = message.slice(10).trim();
             const canceled = await cancelJob(genID);
@@ -205,7 +201,9 @@ async function handleConjureJob(client, channel, username, prompt) {
             client.say(channel, `Sorry ${job.requestor}, your request for ${job.prompt} was not possible and has been canceled.`);
             return;
         }
-
+        else {
+            client.say(channel, `@${job.requestor} the ETA on your job is approximately ${Math.floor(status.wait_time / 60 } minutes and ${status.wait_time % 60} seconds...`);
+         }
         // Loop until the job is done
         while (!status.done) {
             // Calculate the dynamic wait time
