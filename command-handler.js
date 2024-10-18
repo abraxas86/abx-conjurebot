@@ -21,6 +21,11 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
     const matchedCommand = commands.find(cmd => message.trim().toLowerCase().startsWith(cmd.command.toLowerCase()));
     //const matchedAdminCommand = adminCommands.find(cmd => message.trim().toLowerCase().startsWith(cmd.adminCommand.toLowerCase()))
 
+    // Help command to post all available options to chat:
+    if (message.toLowerCase() === '!help' || message.toLowerCase() === '!help-conjure' || message.toLowerCase() === '!conjure-help' || message.toLowerCase() === '!conjure-commands'){
+        client.say(channel, `Available art conjure commands: ${commands.map(cmd => cmd.command).join(', ')}`);
+    }
+
     // Broadcaster-only commands
     if (userAuthLevel >= 4){
         // update conjure commands
@@ -194,7 +199,7 @@ async function handleConjureJob(client, channel, username, prompt) {
 
         // Cancel job if not possible
         if (!status.is_possible) {
-            await executeUpdate('UPDATE Jobs SET status = 99 WHERE generationId = ?', [genID]);
+            await executeUpdate('UPDATE Jobs SET status = 99 WHERE requestor = ? AND generationId IS NULL', [job.requestor]);
             console.error(`Status set to 99: ${genID} - ${job.prompt}`);
             await cancelJob(genID);
             client.say(channel, `Sorry ${job.requestor}, your request for ${job.prompt} was not possible and has been canceled.`);
