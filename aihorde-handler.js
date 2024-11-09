@@ -5,8 +5,6 @@ const path = require('path');
 const fetch = require('node-fetch'); // Use CommonJS-compatible import
 const { io } = require('./server-handler'); // Adjust path as needed
 
-
-
 const stableHordeApiKey = process.env.CONJURE_STABLEHORDE_API_KEY;
 const client_agent = process.env.CONJURE_CLIENT_AGENT
 
@@ -22,13 +20,13 @@ const colours = {
 };
 
 const ai_horde = new AIHorde({
-    api_key: stableHordeApiKey,
     cache_interval: 1000 * 10,
     cache: {
         generations_check: 1000 * 30,
     },
     client_agent: client_agent
 });
+
 
 async function getWorkers(searchParams) {
     try {
@@ -139,13 +137,14 @@ async function sendRequest(job) {
 
     const [params] = await executeSelect('SELECT * FROM commands WHERE command = ?', [job.command]);
 
-    console.log(`${colours.magenta} ===== JOB DETAILS =====\n ${colours.cyan}${JSON.stringify(job)}\n${colours.magenta}=======================`)
+    console.log(`${colours.magenta} ===== JOB DETAILS =====\n ${colours.cyan}${JSON.stringify(job)}\n${colours.magenta}=======================`);
 
     try {
         // Convert the '0'/'1' value from the database to a boolean
         const nsfwBoolean = job.nsfw === 1;  // '1' => true, '0' => false
-        const extrasSlowWorkersBoolean = job.extra_slow_workers === '1';        
-        
+        const extrasSlowWorkersBoolean = job.extra_slow_workers === '1';
+        const useKudos = job.useKudos === 1;
+
         const generationDataPayload = {
             prompt: prompt,
             nsfw: nsfwBoolean,
@@ -153,7 +152,6 @@ async function sendRequest(job) {
             replacement_filter: true,
             models: [params.model],
             extra_slow_workers: extrasSlowWorkersBoolean,
-            //token: stableHordeApiKey,   // I don't think I need this since I have my API Key in the header, and users interface with Twitch Chat so they have no way to provide an API key of their own?
             params: {
                 steps: params.steps || 30,
                 cfg_scale: params.cfg || 5,
@@ -161,25 +159,28 @@ async function sendRequest(job) {
                 clip_skip: params.clip_skip || 0,
                 hires_fix: params.hires_fix === true,
                 karras: params.karras === true,
-                height: 832,      // Height of the image
-                width: 832,       // Width of the image
+                height: 832, // Height of the image
+                width: 832, // Width of the image
             }
+        };
+
+        // Set headers, conditionally adding the token if useKudos is true
+        const headers = {
+            'Client-Agent': client_agent,
+            ...(useKudos && { 'Authorization': `Bearer ${stableHordeApiKey}` })
         };
 
         console.log(`************************************`);
         console.log(`NSFW: ${job.nsfw} || NSFW BOOLEAN: ${nsfwBoolean}`);
+        console.log(`HEADERS:`, headers);
         console.log(`PAYLOAD:`);
         console.log(generationDataPayload);
         console.log(`************************************`);
 
-        const response = await ai_horde.postAsyncImageGenerate(generationDataPayload);
- 
-        //console.log('------- REQUEST DETAILS -------');
-        //console.log(response);
-        //console.log('-------------------------------');
+        // Send the request with headers
+        const response = await ai_horde.postAsyncImageGenerate(generationDataPayload, headers);
 
-
-        const generationId = response.id
+        const generationId = response.id;
 
         await executeUpdate('UPDATE jobs SET generationId = ?, status = 1 WHERE rowid = ?', [generationId, job.rowid]);
         return generationId;
@@ -187,6 +188,7 @@ async function sendRequest(job) {
         console.error("[ABX-Conjurebot: conjure-server] Error sending request:", err);
     }
 }
+
 
 async function checkJob(generationID) {
     
@@ -272,6 +274,40 @@ function formatDateToIso(epochtime){
 
     // Format as yyyy-mm-dd_hh.mm.ss
     return `${year}-${month}-${day}_${hours}.${minutes}.${seconds}`;
+}
+
+function createPayload(params){
+
+    let payload = {
+        width:  params.width  || 768,
+        height: params.height || 768,
+        n:      params.n      || 1,
+        steps:  params.steps  || 30,
+    }
+
+    switch(params.model.toLowerCase()){
+        case "icbinp - i can't believe it's not photography":
+            payload = {
+            cfg_scale: params.cfg            || 3,
+            clip_skip: params['clip_skip']   || 1,
+            sampler: params.sampler          || 'k_dpmpp_2',
+            karras: params.karras            || true,
+            hires_fix: params['highres_fix'] || true,
+            };
+        break
+        
+        case "flux.1-schnell fp8 (compact)":
+            payload = {
+                cfg_scale: params.cfg        || 1,
+                steps: param.steps           || 4,
+                sampler: params.sampler      || 'k_euler',
+                post_processing: params.post || ['RealESGRAN_x2plus'],
+            }
+            break
+    }
+
+    return payload;
+
 }
 
 

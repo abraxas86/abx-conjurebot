@@ -1,6 +1,7 @@
 const { executeSelect, executeUpdate } = require('./database-handler');
-const { addToQueue, allowNSFW } = require('./conjure-handler.js');
+const { addToQueue, allowNSFW, useKudos } = require('./conjure-handler.js');
 const { getJob, getImage, sendRequest, checkJob, saveImage, getModels, cancelJob, getWorkers } = require('./aihorde-handler.js');
+const { colours } = require('./colours.js');
 
 const { createYugi } = require('./card-creator.js');
 
@@ -42,9 +43,15 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             const nsfwState = message.slice(5).trim();
             const NSFW =  allowNSFW(nsfwState);
             
-            // This is flipped because the actual variable is "censored" so true = SFW
-            // ...confusing, I know
             client.say(channel, `NSFW conjuring is currently ${NSFW ? "enabled" : "disabled"}`);
+        }
+
+        // Toggle passing of token
+        if (message.toLowerCase().startsWith('!usetoken')){
+            const kudosState = message.slice(9).trim();
+            const burningTokens =  useKudos(kudosState);
+            
+            client.say(channel, `You are currently ${burningTokens ? "burning kudos to expedite jobs." : "not burning kudos to expedite jobs."}`);
         }
 
         // init job
@@ -72,6 +79,7 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
                 const packet = await getImage(genID);
                 const imgUrl = packet.generations[0].img
                 client.say(channel, `Click at your own risk: ${imgUrl}`);
+
                 saveImage(imgUrl, genID);
             } else {
                 client.say(channel, 'Still in the queue...');
@@ -248,6 +256,18 @@ async function handleConjureJob(client, channel, username, prompt) {
             // Notify the user
             client.say(channel, `${username}: here is your image for: ${prompt}!`);
             client.say(channel, `Click at your own risk: ${imgUrl}`);
+
+            const worker = packet.generations[0]['worker_name']
+
+            if (worker.toLowerCase().includes('ai-braxas')){
+                client.say(channel, `Oh, @Abraxas86 's worker '${worker}' made that!  What a good worker!`);
+                console.log(`${colours.cyan}Abraxas86's ${colours.magenta}WORKER ${colours.yellow}MADE ${colours.blue}THIS!${colours.reset}`);
+            }
+
+            if (worker.toLowerCase().includes('froggi')){
+                client.say(channel, `@idkijustwantedareallylong 's worker made that! Thanks!`);
+                console.log(`${colours.green}Froggi's worker ${worker} made this!${colours.reset}`);
+            }
 
             // Save the image and create the Yugi card
             await saveImage(imgUrl, genID);

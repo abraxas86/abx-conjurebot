@@ -5,7 +5,7 @@ const { executeSelect, executeUpdate } = require('./database-handler');
 //const path = require('path');
 //const { getBuiltinModule } = require('process');
 
-let NSFW  = false;
+let NSFW, kudos  = false;
 const generalNegativePrompts = [];
 /*
     "lowres", "text", "error", "cropped", "worst quality", "low quality", "jpeg artifacts",
@@ -24,6 +24,15 @@ function allowNSFW(state){
 
     console.log(`[ABX-CONJURE: conjure-handler] Allow NSFW: ${NSFW}`);
     return NSFW;
+}
+
+function useKudos(state){
+    if (state.toLowerCase() == "no" ||  state.toLowerCase() == "false" || state.toLowerCase() == "off" || state == "0") kudos = false;
+    else if (state.toLowerCase() == "yes" ||  state.toLowerCase() == "true" || state.toLowerCase() == "on" || state == "1") kudos = true;
+    else console.log(`[ABX-CONJURE: conjure-handler] ERROR Flipping kudos usage. State (${state}) not recognized`);
+
+    console.log(`[ABX-CONJURE: conjure-handler] burn Kudos: ${kudos}`);
+    return kudos; 
 }
 
 async function addToQueue(requestor, command, prompt, modifier, negativePrompts) {
@@ -65,14 +74,15 @@ async function addToQueue(requestor, command, prompt, modifier, negativePrompts)
 
     // Convert boolean NSFW to string 'true' or 'false'
     const nsfwValue = NSFW ? '1' : '0';
+    const kudosValue = kudos ? '1' : '0';
 
     console.log(`Censored Value: ${nsfwValue}`);
 
     const insertQuery = `
-        INSERT INTO Jobs (timestamp, requestor, command, prompt, modifier, nsfw, name, type, status, generationId)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, Null)`;
+        INSERT INTO Jobs (timestamp, requestor, command, prompt, modifier, nsfw, useKudos, name, type, status, generationId)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, Null)`;
 
-    await executeUpdate(insertQuery, [timestamp, requestor, command, prompt, modifier, nsfwValue, cardName, cardType]);
+    await executeUpdate(insertQuery, [timestamp, requestor, command, prompt, modifier, nsfwValue, kudosValue, cardName, cardType]);
     return;
 }
 
@@ -101,4 +111,4 @@ async function getCardType() {
         return type.type;
 }
 
-module.exports = { addToQueue, allowNSFW };
+module.exports = { addToQueue, allowNSFW, useKudos };
