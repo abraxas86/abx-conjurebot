@@ -189,18 +189,13 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
     } // end of broadcaster-only commands
 
     if (message.toLowerCase().startsWith('!cardcount')){
-        const username = message.slice(10).trim();
-
-        if (!username){
-            client.say(channel,'You need to provide a username. ie: "!cardcount abraxas86"');
-            return;
-        }
+        let user = message.slice(10).trim() || username;
 
         try{
-            [cardCount] = await executeSelect('SELECT COUNT(requestor) AS cardcount FROM jobs WHERE requestor=? AND status=?',[username,3]);
-            client.say(channel,`${username} has created ${cardCount.cardcount} cards.`);      
+            [cardCount] = await executeSelect('SELECT COUNT(requestor) AS cardcount FROM jobs WHERE requestor=? AND status=?',[user,3]);
+            client.say(channel,`${user} has created ${cardCount.cardcount} cards.`);      
         } catch {
-            client.say(channel, `Error fetching results for ${username}.`);
+            client.say(channel, `Error fetching results for ${user}.`);
         }
 
         return;
