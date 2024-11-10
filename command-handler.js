@@ -157,15 +157,53 @@ async function handleCommands(client, message, username, userAuthLevel, userstat
             return
         }
         
-
         if (message.toLowerCase().startsWith('!debug')){
-            const blurb = message.slice(6).trim()
+            const blurb = message.slice(6).trim();
 
             await sendTextRequest(blurb);
             return;
         }
 
+        if (message.toLowerCase().startsWith('!cardsbyuser')){
+            try{
+                const stats = await executeSelect('SELECT requestor, COUNT(*) AS cardcount FROM jobs WHERE status = ? GROUP BY requestor ORDER BY cardcount DESC', [3]);
 
+                if (stats.length === 0 ){
+                    client.say(channel,'Nobody has requested any cards yet!');
+                    return;
+                } else { 
+                    let cardCountResponse = '';
+
+                    stats.forEach((row) => {
+                        cardCountResponse += `${row.requestor} (${row.cardcount}) `;
+                    });
+
+                    client.say(channel, `Card counts per user: ${cardCountResponse}`);
+                    return;
+                }
+            } catch {
+                client.say(channel, 'Error returning results');
+                return;
+            }
+        }
+    } // end of broadcaster-only commands
+
+    if (message.toLowerCase().startsWith('!cardcount')){
+        const username = message.slice(10).trim();
+
+        if (!username){
+            client.say(channel,'You need to provide a username. ie: "!cardcount abraxas86"');
+            return;
+        }
+
+        try{
+            [cardCount] = await executeSelect('SELECT COUNT(requestor) AS cardcount FROM jobs WHERE requestor=? AND status=?',[username,3]);
+            client.say(channel,`${username} has created ${cardCount.cardcount} cards.`);      
+        } catch {
+            client.say(channel, `Error fetching results for ${username}.`);
+        }
+
+        return;
     }
 
     if (matchedCommand) {
